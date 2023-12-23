@@ -19,7 +19,7 @@ find_package(Vulkan REQUIRED)
 add_executable(${PROJECT_NAME} src/main.c)
 
 # Link the executable with cglm statically, glfw, and Vulkan dynamically
-target_link_libraries(${PROJECT_NAME} PRIVATE libcglm.a glfw Vulkan::Vulkan)
+target_link_libraries(${PROJECT_NAME} PRIVATE glm glfw Vulkan::Vulkan)
 
 # Set the output directory to ${PROJECTROOT}/target
 set_target_properties(${PROJECT_NAME} PROPERTIES
