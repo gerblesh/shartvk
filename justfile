@@ -17,7 +17,7 @@ build:
         meson setup ..
 
         cd target && \
-        ninja
+        meson compile
 
 run: build
         VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation ./target/shartvk

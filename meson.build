@@ -16,7 +16,7 @@ cc = meson.get_compiler('c')
 # Add the cglm library
 
 cglm_dep = dependency('cglm')
-glfw_dep = dependency('glfw3')
+sdl_dep = dependency('sdl2')
 vulkan_dep = dependency('vulkan')
 
 # Add the executable
@@ -24,7 +24,7 @@ executable_name = 'shartvk'
 executable = executable(
   executable_name,
   'src/main.c',
-  dependencies : [cglm_dep, glfw_dep, vulkan_dep],
+  dependencies : [cglm_dep, sdl_dep, vulkan_dep],
   install : true
 )
 

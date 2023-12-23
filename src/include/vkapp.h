@@ -1,23 +1,16 @@
 #include <vulkan/vulkan.h>
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+#include "SDL.h"
 
 typedef struct {
     uint32_t width;
     uint32_t height;
     char* title;
-    GLFWwindow* window;
+    SDL_Window* window;
+    SDL_Renderer* renderer;
     VkInstance instance;
 } VkApp;
 
-// Vulkan shtuff
-// TODO: reorg later :D
-
 void app_createVulkanInstance(VkApp* pApp) {
-    // initialize the extensions array
-    // app->extensionCount = 1;
-    // app->extensions = (VkExtensionProperties*)malloc(app->extensionCount * sizeof(VkExtensionProperties));
-
     VkApplicationInfo appInfo;
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pNext = NULL;
@@ -28,73 +21,91 @@ void app_createVulkanInstance(VkApp* pApp) {
     appInfo.apiVersion = VK_API_VERSION_1_0;
 
     VkInstanceCreateInfo createInfo = {
-        createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-        createInfo.flags = 0,
-        createInfo.pNext = NULL,
-        createInfo.pApplicationInfo = &appInfo,
-        createInfo.enabledLayerCount = 0,
-        createInfo.ppEnabledLayerNames = NULL
+        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        .flags = 0,
+        .pNext = NULL,
+        .pApplicationInfo = &appInfo,
+        .enabledLayerCount = 0,
+        .ppEnabledLayerNames = NULL
     };
 
-    // get the amount of instance extensions needed to allocate
-    // uint32_t instnaceExtensionCount = 0;
-    // vkEnumerateInstanceExtensionProperties(NULL, &instnaceExtensionCount, NULL);
-    // get the glfw extensions:
-    uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions;
+    // Get SDL Vulkan extensions
+    uint32_t sdlExtensionCount = 0;
+    if (!SDL_Vulkan_GetInstanceExtensions(NULL, &sdlExtensionCount, NULL)) {
+        fprintf(stderr, "ERROR: Failed to get instance extensions count. %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
 
-    
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-    printf("glfw extensions: %d \n", glfwExtensionCount);
-    // get list of all extensions needed:
+    const char** sdlExtensions = malloc(sdlExtensionCount * sizeof(const char*));
+    if (!SDL_Vulkan_GetInstanceExtensions(NULL, &sdlExtensionCount, sdlExtensions)) {
+        fprintf(stderr, "ERROR: Failed to get instance extensions count. %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
 
-    
+    createInfo.enabledExtensionCount = sdlExtensionCount;
+    createInfo.ppEnabledExtensionNames = sdlExtensions;
 
-    createInfo.enabledExtensionCount = glfwExtensionCount;
-    createInfo.ppEnabledExtensionNames = glfwExtensions;
+    free(sdlExtensions);
 
-    // get supported extensions
-    // VkExtensionProperties* instanceExtensions = (VkExtensionProperties*)malloc(extensionCount * sizeof(VkExtensionProperties));
-    // vkEnumerateInstanceExtensionProperties(NULL, &instnaceExtensionCount, instanceExtensions);
-
-
-    // allocate for the function (for some reason thems don't allocate for ya)
-    // app->instance = (VkInstance*)malloc(sizeof(VkInstance));
     printf("heyo, before the vkCreateInstance!\n");
     VkResult result = vkCreateInstance(&createInfo, NULL, &pApp->instance);
     printf("heyo, after the vkCreateInstance!\n");
-    // free(extensions);
     assert(result == VK_SUCCESS);
 }
 
-// GLFW shtuff
+void app_initVulkanSDL(VkApp* pApp) {
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        fprintf(stderr, "SDL initialization failed: %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
 
-void app_initVulkan(VkApp* pApp) {
+    pApp->window = SDL_CreateWindow(pApp->title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, pApp->width, pApp->height, SDL_WINDOW_VULKAN);
+    if (!pApp->window) {
+        fprintf(stderr, "Failed to create SDL window: %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+
+    pApp->renderer = SDL_CreateRenderer(pApp->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (!pApp->renderer) {
+        fprintf(stderr, "Failed to create SDL renderer: %s\n", SDL_GetError());
+        exit(EXIT_FAILURE);
+    }
+
     app_createVulkanInstance(pApp);
 }
 
-void app_initWindow(VkApp* pApp) {
-    glfwInit();
-    
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    pApp->window = glfwCreateWindow(pApp->width, pApp->height, pApp->title, NULL, NULL);
+void app_render(VkApp* pApp) {
+    // Vulkan rendering code goes here
+    // You can use pApp->renderer to render with SDL
+    // and pApp->instance for Vulkan rendering
 }
 
 void app_mainLoop(VkApp* pApp) {
-    while (!glfwWindowShouldClose(pApp->window)) {
-        glfwPollEvents();
+    SDL_Event event;
+    while (1) {
+        SDL_PollEvent(&event);
+        if (event.type == SDL_QUIT) {
+            break;
+        }
+
+        // Vulkan rendering
+        app_render(pApp);
+
+        SDL_SetRenderDrawColor(pApp->renderer, 0x00, 0x00, 0x00, 0x00);
+        SDL_RenderClear(pApp->renderer);
+        SDL_RenderPresent(pApp->renderer);
     }
 }
 
 void app_cleanup(VkApp* pApp) {
     vkDestroyInstance(pApp->instance, NULL);
-    glfwDestroyWindow(pApp->window);
-    glfwTerminate();
+    SDL_DestroyRenderer(pApp->renderer);
+    SDL_DestroyWindow(pApp->window);
+    SDL_Quit();
 }
 
 int app_run(VkApp* pApp) {
-    app_initVulkan(pApp);
+    app_initVulkanSDL(pApp);
     app_mainLoop(pApp);
     app_cleanup(pApp);
     return 0;

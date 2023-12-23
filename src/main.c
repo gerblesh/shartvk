@@ -7,11 +7,15 @@
 
 
 int main() {
-    VkApp helloTriangle;
-    helloTriangle.width = 600;
-    helloTriangle.height = 800;
-    helloTriangle.title = "shartVK App";
-    app_run(&helloTriangle);
-    return 0;
+    VkApp app = {
+        .width = 800,
+        .height = 600,
+        .title = "Hello Triangle SDL",
+        .window = NULL,
+        .renderer = NULL,
+        .instance = VK_NULL_HANDLE,
+    };
+
+    return app_run(&app);
 }
 
