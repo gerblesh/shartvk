@@ -11,14 +11,15 @@ typedef struct {
 } VkApp;
 
 void app_createVulkanInstance(VkApp* pApp) {
-    VkApplicationInfo appInfo;
-    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pNext = NULL;
-    appInfo.pApplicationName = pApp->title;
-    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.pEngineName = "No Engine";
-    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    appInfo.apiVersion = VK_API_VERSION_1_0;
+    VkApplicationInfo appInfo = {
+        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+        .pNext = NULL,
+        .pApplicationName = pApp->title,
+        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+        .pEngineName = "No Engine",
+        .engineVersion = VK_MAKE_VERSION(1, 0, 0).
+        .apiVersion = VK_API_VERSION_1_0
+    }
 
     VkInstanceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -29,13 +30,14 @@ void app_createVulkanInstance(VkApp* pApp) {
         .ppEnabledLayerNames = NULL
     };
 
-    // Get SDL Vulkan extensions
+    // get extension count first
     uint32_t sdlExtensionCount = 0;
     if (!SDL_Vulkan_GetInstanceExtensions(NULL, &sdlExtensionCount, NULL)) {
         fprintf(stderr, "ERROR: Failed to get instance extensions count. %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
     }
 
+    // then allocate
     const char** sdlExtensions = malloc(sdlExtensionCount * sizeof(const char*));
     if (!SDL_Vulkan_GetInstanceExtensions(NULL, &sdlExtensionCount, sdlExtensions)) {
         fprintf(stderr, "ERROR: Failed to get instance extensions count. %s\n", SDL_GetError());
@@ -75,9 +77,7 @@ void app_initVulkanSDL(VkApp* pApp) {
 }
 
 void app_render(VkApp* pApp) {
-    // Vulkan rendering code goes here
-    // You can use pApp->renderer to render with SDL
-    // and pApp->instance for Vulkan rendering
+    return;
 }
 
 void app_mainLoop(VkApp* pApp) {
@@ -87,10 +87,7 @@ void app_mainLoop(VkApp* pApp) {
         if (event.type == SDL_QUIT) {
             break;
         }
-
-        // Vulkan rendering
         app_render(pApp);
-
         SDL_SetRenderDrawColor(pApp->renderer, 0x00, 0x00, 0x00, 0x00);
         SDL_RenderClear(pApp->renderer);
         SDL_RenderPresent(pApp->renderer);
