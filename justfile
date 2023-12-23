@@ -5,6 +5,9 @@ _default:
 setup-fedora:
         sudo dnf install $(cat packages-fedora)
 
+clean:
+        rm -rf target
+
 build:
         if [ ! -d "target" ]; then \
                 mkdir target; \
