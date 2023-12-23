@@ -6,10 +6,8 @@ vulkan-validation-layers-devel
 spirv-headers-devel
 spirv-tools-libs
 spirv-tools-devel
-automake
-autoconf
-make
-libtool
+meson
+ninja
 xorg-x11-server-devel
 xorg-x11-server-common
 libXrender-devel
