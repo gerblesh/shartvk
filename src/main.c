@@ -12,7 +12,6 @@ int main() {
         .height = 600,
         .title = "Hello Triangle SDL",
         .window = NULL,
-        .renderer = NULL,
         .instance = VK_NULL_HANDLE,
     };
 

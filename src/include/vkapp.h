@@ -19,7 +19,6 @@ void app_createVulkanInstance(VkApp* pApp) {
         .engineVersion = VK_MAKE_VERSION(1, 0, 0),
         .apiVersion = VK_API_VERSION_1_0
     };
-
     VkInstanceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .flags = 0,
@@ -46,12 +45,11 @@ void app_createVulkanInstance(VkApp* pApp) {
     createInfo.enabledExtensionCount = sdlExtensionCount;
     createInfo.ppEnabledExtensionNames = sdlExtensions;
 
-    free(sdlExtensions);
-
     printf("heyo, before the vkCreateInstance!\n");
     VkResult result = vkCreateInstance(&createInfo, NULL, &pApp->instance);
     printf("heyo, after the vkCreateInstance!\n");
     assert(result == VK_SUCCESS);
+    free(sdlExtensions);
 }
 
 void app_initVulkanSDL(VkApp* pApp) {
@@ -81,15 +79,11 @@ void app_mainLoop(VkApp* pApp) {
             break;
         }
         app_render(pApp);
-        SDL_SetRenderDrawColor(pApp->renderer, 0x00, 0x00, 0x00, 0x00);
-        SDL_RenderClear(pApp->renderer);
-        SDL_RenderPresent(pApp->renderer);
     }
 }
 
 void app_cleanup(VkApp* pApp) {
     vkDestroyInstance(pApp->instance, NULL);
-    SDL_DestroyRenderer(pApp->renderer);
     SDL_DestroyWindow(pApp->window);
     SDL_Quit();
 }
