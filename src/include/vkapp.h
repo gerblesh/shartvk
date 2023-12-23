@@ -6,7 +6,6 @@ typedef struct {
     uint32_t height;
     char* title;
     SDL_Window* window;
-    SDL_Renderer* renderer;
     VkInstance instance;
 } VkApp;
 
@@ -17,9 +16,9 @@ void app_createVulkanInstance(VkApp* pApp) {
         .pApplicationName = pApp->title,
         .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
         .pEngineName = "No Engine",
-        .engineVersion = VK_MAKE_VERSION(1, 0, 0).
+        .engineVersion = VK_MAKE_VERSION(1, 0, 0),
         .apiVersion = VK_API_VERSION_1_0
-    }
+    };
 
     VkInstanceCreateInfo createInfo = {
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -32,14 +31,14 @@ void app_createVulkanInstance(VkApp* pApp) {
 
     // get extension count first
     uint32_t sdlExtensionCount = 0;
-    if (!SDL_Vulkan_GetInstanceExtensions(NULL, &sdlExtensionCount, NULL)) {
+    if (!SDL_Vulkan_GetInstanceExtensions(pApp->window, &sdlExtensionCount, NULL)) {
         fprintf(stderr, "ERROR: Failed to get instance extensions count. %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
     }
-
-    // then allocate
+    printf("SDL extension amount: %d\n", sdlExtensionCount);
+    // then allocate and get the extension array
     const char** sdlExtensions = malloc(sdlExtensionCount * sizeof(const char*));
-    if (!SDL_Vulkan_GetInstanceExtensions(NULL, &sdlExtensionCount, sdlExtensions)) {
+    if (!SDL_Vulkan_GetInstanceExtensions(pApp->window, &sdlExtensionCount, sdlExtensions)) {
         fprintf(stderr, "ERROR: Failed to get instance extensions count. %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
     }
@@ -64,12 +63,6 @@ void app_initVulkanSDL(VkApp* pApp) {
     pApp->window = SDL_CreateWindow(pApp->title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, pApp->width, pApp->height, SDL_WINDOW_VULKAN);
     if (!pApp->window) {
         fprintf(stderr, "Failed to create SDL window: %s\n", SDL_GetError());
-        exit(EXIT_FAILURE);
-    }
-
-    pApp->renderer = SDL_CreateRenderer(pApp->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if (!pApp->renderer) {
-        fprintf(stderr, "Failed to create SDL renderer: %s\n", SDL_GetError());
         exit(EXIT_FAILURE);
     }
 
