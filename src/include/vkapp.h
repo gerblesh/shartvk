@@ -23,6 +23,10 @@ const char *validationLayers[] = {
     "VK_LAYER_KHRONOS_validation"
 };
 
+char** getRequiredExtensions() {
+    
+}
+
 bool checkValidationLayerSupport() {
     // if the validation layers are disabled, immediately exit out
     if (! (ENABLE_VALIDATION_LAYERS)) {
@@ -32,7 +36,7 @@ bool checkValidationLayerSupport() {
     uint32_t layerCount = 0;
     vkEnumerateInstanceLayerProperties(&layerCount, NULL);
 
-    VkLayerProperties* availableLayers = (VkLayerProperties*)malloc(layerCount * sizeof(VkLayerProperties));
+    VkLayerProperties availableLayers[layerCount];
     vkEnumerateInstanceLayerProperties(&layerCount, availableLayers);
 
     // check if the requested validation layers are available
@@ -49,11 +53,9 @@ bool checkValidationLayerSupport() {
         }
     
         if (!layerFound) {
-            free(availableLayers);
             return false;
         }
     }
-    free(availableLayers);
     return true;
 }
 
@@ -62,7 +64,7 @@ bool checkExtensionSupport(uint32_t requiredExtensionCount, const char **require
     uint32_t extensionCount;
     vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, NULL);
 
-    VkExtensionProperties* availableExtensions = (VkExtensionProperties*)malloc(extensionCount * sizeof(VkExtensionProperties));
+    VkExtensionProperties availableExtensions[extensionCount];
     vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, availableExtensions);
 
     for (int i = 0; i < requiredExtensionCount; i++) {
@@ -74,15 +76,13 @@ bool checkExtensionSupport(uint32_t requiredExtensionCount, const char **require
                 extensionFound = true;
                 break;
             }
-            
         }
         if (!extensionFound) {
-            free(availableExtensions);
+            fprintf(stderr,"ERROR: failed to find required vulkan extension: %s!\n", extensionName);
             return false;
         }
     }
 
-    free(availableExtensions);
     return true;
 }
 
@@ -124,25 +124,34 @@ void app_createVulkanInstance(VkApp* pApp) {
     }
     printf("SDL extension amount: %d\n", sdlExtensionCount);
     // then allocate and get the extension array
-    const char** sdlExtensions = malloc(sdlExtensionCount * sizeof(const char*));
+    const char* sdlExtensions[sdlExtensionCount];
     if (!SDL_Vulkan_GetInstanceExtensions(pApp->window, &sdlExtensionCount, sdlExtensions)) {
         fprintf(stderr, "ERROR: Failed to get instance extensions count. %s\n", SDL_GetError());
         exit(1);
     }
 
-    createInfo.enabledExtensionCount = sdlExtensionCount;
-    createInfo.ppEnabledExtensionNames = sdlExtensions;
+    uint32_t extensionCount = sdlExtensionCount;
+    const char *extensions[sdlExtensionCount + 1];
+    if (ENABLE_VALIDATION_LAYERS) {
+        extensionCount++;
+        for (int i = 0; i < sdlExtensionCount; i++) {
+            extensions[i] = sdlExtensions[i];
+        }
+        extensions[sdlExtensionCount] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+    }
+
+
+    createInfo.enabledExtensionCount = extensionCount;
+    createInfo.ppEnabledExtensionNames = extensions;
 
     if (!checkExtensionSupport(sdlExtensionCount, sdlExtensions)) {
         fprintf(stderr,"ERROR: required vulkan extensions not supported!\n");
         exit(1);
     }
 
-    printf("heyo, before the vkCreateInstance!\n");
     VkResult result = vkCreateInstance(&createInfo, NULL, &pApp->instance);
-    printf("heyo, after the vkCreateInstance!\n");
+    printf("Successfully created vkInstance!\n");
     assert(result == VK_SUCCESS);
-    free(sdlExtensions);
 }
 
 // end of vulkan stuff
