@@ -6,14 +6,8 @@
 
 
 int main() {
-    VkApp app = {
-        .width = 800,
-        .height = 600,
-        .title = "Hello Triangle SDL",
-        .window = NULL,
-        .instance = VK_NULL_HANDLE,
-    };
-
+    VkApp app = {0};
+    populateVkApp(600, 800, "shartvk triangle", &app);
     return app_run(&app);
 }
 
