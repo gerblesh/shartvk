@@ -26,6 +26,7 @@ void app_initVulkan(VkApp *pApp) {
     app_createVulkanInstance(pApp);
     setupDebugMessenger(pApp);
     pickPhysicalDevice(pApp);
+    createLogicalDevice(pApp);
 }
 
 void app_mainLoop(VkApp *pApp) {
@@ -43,8 +44,8 @@ void app_cleanup(VkApp *pApp) {
     if (ENABLE_VALIDATION_LAYERS) {
         DestroyDebugUtilsMessengerEXT(pApp->instance, pApp->debugMessenger, NULL);
     }
+    vkDestroyDevice(pApp->device, NULL);
     vkDestroyInstance(pApp->instance, NULL);
-    
     SDL_DestroyWindow(pApp->window);
     SDL_Quit();
 }

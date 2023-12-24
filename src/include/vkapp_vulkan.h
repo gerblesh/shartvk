@@ -129,6 +129,43 @@ void pickPhysicalDevice(VkApp *pApp) {
     }
 }
 
+void createLogicalDevice(VkApp *pApp) {
+    QueueFamilyIndices indices = findQueueFamilies(pApp->physicalDevice);
+    float queuePriority = 1.0f;
+    VkDeviceQueueCreateInfo queueCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .queueFamilyIndex = indices.graphicsFamily,
+        .queueCount = 1,
+        .pQueuePriorities = &queuePriority,
+    };
+    // initialize all features to false by default
+    VkPhysicalDeviceFeatures deviceFeatures = {VK_FALSE};
+
+    VkDeviceCreateInfo logicalDeviceCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .pQueueCreateInfos = &queueCreateInfo,
+        .queueCreateInfoCount = 1,
+        .pEnabledFeatures = &deviceFeatures,
+        .enabledExtensionCount = 0,
+        .ppEnabledExtensionNames = NULL,
+    };
+    if (ENABLE_VALIDATION_LAYERS) {
+        logicalDeviceCreateInfo.enabledLayerCount = VALIDATION_LAYER_COUNT;
+        logicalDeviceCreateInfo.ppEnabledLayerNames = validationLayers;
+    } else {
+        logicalDeviceCreateInfo.enabledLayerCount = 0;
+        logicalDeviceCreateInfo.ppEnabledLayerNames = NULL;
+    }
+    if (vkCreateDevice(pApp->physicalDevice, &logicalDeviceCreateInfo, NULL, &pApp->device) != VK_SUCCESS) {
+        fprintf(stderr,"failed to create logical device!\n");
+    }
+    vkGetDeviceQueue(pApp->device, indices.graphicsFamily, 0, &pApp->graphicsQueue);
+}
+
 void app_render(VkApp *pApp) {
     return;
 }

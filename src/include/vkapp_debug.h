@@ -90,7 +90,7 @@ bool checkExtensionSupport(uint32_t requiredExtensionCount, const char **require
     vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, availableExtensions);
 
     for (int i = 0; i < requiredExtensionCount; i++) {
-        char *extensionName = requiredExtensions[i];
+        const char *extensionName = requiredExtensions[i];
         bool extensionFound = false;
         for (int j = 0; j < extensionCount; j++) {
             VkExtensionProperties extensionProperties = availableExtensions[j];
