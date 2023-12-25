@@ -8,6 +8,46 @@ const char *deviceExtensions[] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
+VkSurfaceFormatKHR chooseSwapSurfaceFormat(uint32_t formatCount, VkSurfaceFormatKHR *availableFormats) {
+    for (uint32_t i = 0; i < formatCount; i++) {
+        if (availableFormats[i].format == VK_FORMAT_B8G8R8A8_SRGB && availableFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+            return availableFormats[i];
+        }
+    }
+
+    return availableFormats[0];
+}
+
+VkPresentModeKHR chooseSwapPresentMode(uint32_t presentModeCount, VkPresentModeKHR *availablePresentModes) {
+    for (uint32_t i = 0; i < presentModeCount; i++) {
+        if (availablePresentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+            return availablePresentModes[i];
+        }
+    }
+
+    return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkExtent2D chooseSwapExtent(SDL_Window *window, VkSurfaceCapabilitiesKHR capabilities) {
+    // when the WM sets the current extent width to the max value of uint32_t
+    // we can set the current extent to the window size in pixels
+    if (capabilities.currentExtent.width != UINT32_MAX) {
+        return capabilities.currentExtent;
+    }
+    int width;
+    int height;
+    SDL_GL_GetDrawableSize(window, &width, &height);
+
+    VkExtent2D actualExtent = {
+        (uint32_t)width,
+        (uint32_t)height
+    };
+
+    actualExtent.width = u32Clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+    actualExtent.height = u32Clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+
+    return actualExtent;
+}
 
 SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) {
     SwapChainSupportDetails details;
@@ -29,6 +69,20 @@ SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurface
         vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &details.presentModeCount, details.presentModes);
     }
     return details;
+}
+
+void createSwapChain(VkApp *pApp) {
+    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(pApp->physicalDevice, pApp->surface);
+    VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formatCount, swapChainSupport.formats);
+    VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModeCount, swapChainSupport.presentModes);
+    VkExtent2D extent = chooseSwapExtent(pApp->window, swapChainSupport.capabilities);
+
+    // reccommended to request at least one more image than minimum so we don't have to wait for the driver
+    uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+    
+    if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
+        imageCount = swapChainSupport.capabilities.maxImageCount;
+    }
 }
 
 bool checkExtensionSupport(uint32_t requiredExtensionCount, const char **requiredExtensions) {

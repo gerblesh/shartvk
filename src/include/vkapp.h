@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <string.h>
+#include <limits.h>
 
 #include <vulkan/vulkan.h>
 #include "SDL.h"
@@ -22,6 +23,7 @@ void app_initSDLWindow(VkApp *pApp) {
         fprintf(stderr, "Failed to create SDL window: %s\n", SDL_GetError());
         exit(1);
     }
+    SDL_SetWindowResizable(pApp->window, SDL_FALSE);
 }
 
 void app_initVulkan(VkApp *pApp) {

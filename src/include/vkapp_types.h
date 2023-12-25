@@ -65,3 +65,8 @@ void uint32SetInsert(UInt32Set *set, uint32_t value) {
     }
 }
 
+uint32_t u32Clamp(uint32_t n, uint32_t min, uint32_t max) {
+    if (n > max) return max;
+    if (n < min) return min;
+    return n;
+}
