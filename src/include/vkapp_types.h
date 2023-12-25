@@ -9,6 +9,7 @@ typedef struct {
     VkPhysicalDevice physicalDevice;
     VkDevice device;
     VkQueue graphicsQueue;
+    VkQueue presentQueue;
 } VkApp;
 
 void populateVkApp(uint32_t width,uint32_t height, char *title, VkApp *pApp) {
@@ -23,3 +24,30 @@ void populateVkApp(uint32_t width,uint32_t height, char *title, VkApp *pApp) {
     pApp->device = VK_NULL_HANDLE;
     pApp->graphicsQueue = VK_NULL_HANDLE;
 }
+
+#define VKAPP_MAX_SET_SIZE 10  // Adjust the size according to your needs
+
+typedef struct {
+    uint32_t data[VKAPP_MAX_SET_SIZE];
+    size_t size;
+} UInt32Set;
+
+void initUInt32Set(UInt32Set *set) {
+    set->size = 0;
+}
+
+bool uint32SetContains(const UInt32Set *set, uint32_t value) {
+    for (size_t i = 0; i < set->size; ++i) {
+        if (set->data[i] == value) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void uint32SetInsert(UInt32Set *set, uint32_t value) {
+    if (!uint32SetContains(set, value) && set->size < VKAPP_MAX_SET_SIZE) {
+        set->data[set->size++] = value;
+    }
+}
+

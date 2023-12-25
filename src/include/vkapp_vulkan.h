@@ -1,5 +1,10 @@
+#include <vulkan/vulkan.h>
+#include "SDL.h"
+#include "SDL_vulkan.h"
+
 typedef struct {
     uint32_t graphicsFamily;
+    uint32_t presentFamily;
     bool requiredFamilesFound;
 } QueueFamilyIndices;
 
@@ -73,31 +78,38 @@ void app_createVulkanInstance(VkApp *pApp) {
     assert(result == VK_SUCCESS);
 }
 
-QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
-    QueueFamilyIndices indices = {0};
-
+QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) {
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, NULL);
-
     VkQueueFamilyProperties queueFamilies[queueFamilyCount];
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies);
 
+    QueueFamilyIndices indices = {0};
     bool graphicsFamilyFound = false;
+    bool presentFamilyFound = false;
     for (int i = 0; i < queueFamilyCount; i++) {
         if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            printf("Found support for graphics in queueFamily!\n");
+            printf("Found supported queueFamily for graphics! Index: %d\n", i);
             indices.graphicsFamily = i;
             graphicsFamilyFound = true;
         }
-        indices.requiredFamilesFound = graphicsFamilyFound;
+
+        VkBool32 presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+        if (presentSupport) {
+            printf("Found supported queueFamily for presentation! Index: %d\n", i);
+            indices.presentFamily = i;
+            presentFamilyFound = true;
+        }
+
+        indices.requiredFamilesFound = graphicsFamilyFound && presentFamilyFound;
         if (indices.requiredFamilesFound) break;
     }
-
     return indices;
 }
 
-bool isDeviceSuitable(VkPhysicalDevice device) {
-    QueueFamilyIndices queueFamilies = findQueueFamilies(device);
+bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
+    QueueFamilyIndices queueFamilies = findQueueFamilies(device, surface);
     return queueFamilies.requiredFamilesFound;
 }
 
@@ -114,7 +126,7 @@ void pickPhysicalDevice(VkApp *pApp) {
 
     for (int i = 0; i < deviceCount; i++) {
         VkPhysicalDevice device = physicalDevices[i];
-        if (isDeviceSuitable(device)) {
+        if (isDeviceSuitable(device, pApp->surface)) {
             pApp->physicalDevice = device;
             break;
         }
@@ -130,16 +142,27 @@ void pickPhysicalDevice(VkApp *pApp) {
 }
 
 void createLogicalDevice(VkApp *pApp) {
-    QueueFamilyIndices indices = findQueueFamilies(pApp->physicalDevice);
+    QueueFamilyIndices indices = findQueueFamilies(pApp->physicalDevice, pApp->surface);
+   
+    UInt32Set uniqueQueueFamilies;
+    initUInt32Set(&uniqueQueueFamilies);
+    uint32SetInsert(&uniqueQueueFamilies, indices.graphicsFamily);
+    uint32SetInsert(&uniqueQueueFamilies, indices.presentFamily);
+
+    VkDeviceQueueCreateInfo queueCreateInfos[uniqueQueueFamilies.size];
     float queuePriority = 1.0f;
-    VkDeviceQueueCreateInfo queueCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
-        .queueFamilyIndex = indices.graphicsFamily,
-        .queueCount = 1,
-        .pQueuePriorities = &queuePriority,
-    };
+    for (int i = 0; i < uniqueQueueFamilies.size; i++) {
+        VkDeviceQueueCreateInfo queueCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            .pNext = NULL,
+            .flags = 0,
+            .queueFamilyIndex = indices.graphicsFamily,
+            .queueCount = 1,
+            .pQueuePriorities = &queuePriority,
+        };
+        queueCreateInfos[i] = queueCreateInfo;
+    }
+
     // initialize all features to false by default
     VkPhysicalDeviceFeatures deviceFeatures = {VK_FALSE};
 
@@ -147,7 +170,7 @@ void createLogicalDevice(VkApp *pApp) {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = NULL,
         .flags = 0,
-        .pQueueCreateInfos = &queueCreateInfo,
+        .pQueueCreateInfos = queueCreateInfos,
         .queueCreateInfoCount = 1,
         .pEnabledFeatures = &deviceFeatures,
         .enabledExtensionCount = 0,
@@ -162,8 +185,16 @@ void createLogicalDevice(VkApp *pApp) {
     }
     if (vkCreateDevice(pApp->physicalDevice, &logicalDeviceCreateInfo, NULL, &pApp->device) != VK_SUCCESS) {
         fprintf(stderr,"failed to create logical device!\n");
+        exit(1);
     }
     vkGetDeviceQueue(pApp->device, indices.graphicsFamily, 0, &pApp->graphicsQueue);
+}
+
+void createSurface(VkApp *pApp) {
+    if (SDL_Vulkan_CreateSurface(pApp->window, pApp->instance, &pApp->surface) != SDL_TRUE) {
+        fprintf(stderr, "failed to create window surface!\n");
+        exit(1);
+    }
 }
 
 void app_render(VkApp *pApp) {

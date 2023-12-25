@@ -5,11 +5,13 @@
 
 #include <vulkan/vulkan.h>
 #include "SDL.h"
+#include "SDL_vulkan.h"
+
 #include "vkapp_types.h"
 #include "vkapp_debug.h"
 #include "vkapp_vulkan.h"
 
-void app_initSDLWindow(VkApp* pApp) {
+void app_initSDLWindow(VkApp *pApp) {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "SDL initialization failed: %s\n", SDL_GetError());
         exit(1);
@@ -25,6 +27,7 @@ void app_initSDLWindow(VkApp* pApp) {
 void app_initVulkan(VkApp *pApp) {
     app_createVulkanInstance(pApp);
     setupDebugMessenger(pApp);
+    createSurface(pApp);
     pickPhysicalDevice(pApp);
     createLogicalDevice(pApp);
 }
@@ -45,6 +48,7 @@ void app_cleanup(VkApp *pApp) {
         DestroyDebugUtilsMessengerEXT(pApp->instance, pApp->debugMessenger, NULL);
     }
     vkDestroyDevice(pApp->device, NULL);
+    vkDestroySurfaceKHR(pApp->instance, pApp->surface, NULL);
     vkDestroyInstance(pApp->instance, NULL);
     SDL_DestroyWindow(pApp->window);
     SDL_Quit();
