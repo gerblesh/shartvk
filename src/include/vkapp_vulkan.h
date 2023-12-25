@@ -8,6 +8,29 @@ const char *deviceExtensions[] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
+
+SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) {
+    SwapChainSupportDetails details;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+
+    // uint32_t formatCount;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &details.formatCount, NULL);
+    if (details.formatCount != 0) {
+        VkSurfaceFormatKHR formats[details.formatCount];
+        details.formats = formats;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &details.formatCount, details.formats);
+    }
+
+    // uint32_t details.presentModeCount;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &details.presentModeCount, NULL);
+    if (details.presentModeCount != 0) {
+        VkPresentModeKHR presentModes[details.presentModeCount];
+        details.presentModes = presentModes;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &details.presentModeCount, details.presentModes);
+    }
+    return details;
+}
+
 bool checkExtensionSupport(uint32_t requiredExtensionCount, const char **requiredExtensions) {
     // get the available layers
     uint32_t extensionCount;
@@ -167,7 +190,24 @@ QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surfa
 
 bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
     QueueFamilyIndices queueFamilies = findQueueFamilies(device, surface);
-    return queueFamilies.requiredFamilesFound && checkDeviceExtensionSupport(device);
+    if (!queueFamilies.requiredFamilesFound) {
+        fprintf(stderr, "ERROR: device QueueFamilies do not support required buffers!");
+        return false;
+    }
+
+    if (!checkDeviceExtensionSupport(device)) {
+        fprintf(stderr, "ERROR: Required device extensions not supported!");
+        return false;
+    }
+
+    SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device, surface);
+    printf("Supported image formats: %d\n", swapChainSupport.formatCount);
+    printf("Supported present modes: %d\n", swapChainSupport.presentModeCount);
+    if ((swapChainSupport.formatCount == 0) || (swapChainSupport.presentModeCount == 0)){
+        fprintf(stderr, "ERROR: SwapChain is not adequately supported ");
+        return false;
+    }
+    return true;
 }
 
 void pickPhysicalDevice(VkApp *pApp) {

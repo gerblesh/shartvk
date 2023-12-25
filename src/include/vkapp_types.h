@@ -26,6 +26,14 @@ void populateVkApp(uint32_t width,uint32_t height, char *title, VkApp *pApp) {
 }
 
 typedef struct {
+    VkSurfaceCapabilitiesKHR capabilities;
+    uint32_t formatCount;
+    VkSurfaceFormatKHR *formats;
+    uint32_t presentModeCount;
+    VkPresentModeKHR *presentModes;
+} SwapChainSupportDetails;
+
+typedef struct {
     uint32_t graphicsFamily;
     uint32_t presentFamily;
     bool requiredFamilesFound;
