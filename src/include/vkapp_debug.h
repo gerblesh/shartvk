@@ -81,30 +81,3 @@ bool checkValidationLayerSupport() {
     return true;
 }
 
-bool checkExtensionSupport(uint32_t requiredExtensionCount, const char **requiredExtensions) {
-    // get the available layers
-    uint32_t extensionCount;
-    vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, NULL);
-
-    VkExtensionProperties availableExtensions[extensionCount];
-    vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, availableExtensions);
-
-    for (int i = 0; i < requiredExtensionCount; i++) {
-        const char *extensionName = requiredExtensions[i];
-        bool extensionFound = false;
-        for (int j = 0; j < extensionCount; j++) {
-            VkExtensionProperties extensionProperties = availableExtensions[j];
-            if (strcmp(extensionName, extensionProperties.extensionName) == 0) {
-                extensionFound = true;
-                break;
-            }
-        }
-        if (!extensionFound) {
-            fprintf(stderr,"ERROR: failed to find required vulkan extension: %s!\n", extensionName);
-            return false;
-        }
-    }
-
-    return true;
-}
-

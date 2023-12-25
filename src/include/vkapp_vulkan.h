@@ -2,17 +2,74 @@
 #include "SDL.h"
 #include "SDL_vulkan.h"
 
-typedef struct {
-    uint32_t graphicsFamily;
-    uint32_t presentFamily;
-    bool requiredFamilesFound;
-} QueueFamilyIndices;
+#define DEVICE_EXTENSION_COUNT 1
+
+const char *deviceExtensions[] = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+
+bool checkExtensionSupport(uint32_t requiredExtensionCount, const char **requiredExtensions) {
+    // get the available layers
+    uint32_t extensionCount;
+    vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, NULL);
+
+    VkExtensionProperties availableExtensions[extensionCount];
+    vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, availableExtensions);
+
+    for (int i = 0; i < requiredExtensionCount; i++) {
+        const char *extensionName = requiredExtensions[i];
+        bool extensionFound = false;
+        for (int j = 0; j < extensionCount; j++) {
+            VkExtensionProperties extensionProperties = availableExtensions[j];
+            if (strcmp(extensionName, extensionProperties.extensionName) == 0) {
+                extensionFound = true;
+                printf("Found required instance extension: %s\n", extensionName);
+                break;
+            }
+        }
+        if (!extensionFound) {
+            fprintf(stderr,"ERROR: failed to find required vulkan instance extension: %s!\n", extensionName);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
+    // get the available layers
+    uint32_t extensionCount;
+    vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, NULL);
+
+    VkExtensionProperties availableExtensions[extensionCount];
+    vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, availableExtensions);
+
+    for (uint32_t i = 0; i < DEVICE_EXTENSION_COUNT; i++) {
+        const char *extensionName = deviceExtensions[i];
+        bool extensionFound = false;
+        for (int j = 0; j < extensionCount; j++) {
+            VkExtensionProperties extensionProperties = availableExtensions[j];
+            if (strcmp(extensionName, extensionProperties.extensionName) == 0) {
+                extensionFound = true;
+                printf("Found required device extension: %s\n", extensionName);
+                break;
+            }
+        }
+        if (!extensionFound) {
+            fprintf(stderr,"ERROR: failed to find required vulkan device extension: %s!\n", extensionName);
+            return false;
+        }
+    }
+
+    return true;
+}
 
 void app_createVulkanInstance(VkApp *pApp) {
     if (!checkValidationLayerSupport()) {
         fprintf(stderr,"ERROR: validation layers requested, but not available!\n");
         exit(1);
     }
+
     VkApplicationInfo appInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pNext = NULL,
@@ -110,7 +167,7 @@ QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surfa
 
 bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
     QueueFamilyIndices queueFamilies = findQueueFamilies(device, surface);
-    return queueFamilies.requiredFamilesFound;
+    return queueFamilies.requiredFamilesFound && checkDeviceExtensionSupport(device);
 }
 
 void pickPhysicalDevice(VkApp *pApp) {
@@ -173,8 +230,8 @@ void createLogicalDevice(VkApp *pApp) {
         .pQueueCreateInfos = queueCreateInfos,
         .queueCreateInfoCount = 1,
         .pEnabledFeatures = &deviceFeatures,
-        .enabledExtensionCount = 0,
-        .ppEnabledExtensionNames = NULL,
+        .enabledExtensionCount = DEVICE_EXTENSION_COUNT,
+        .ppEnabledExtensionNames = deviceExtensions,
     };
     if (ENABLE_VALIDATION_LAYERS) {
         logicalDeviceCreateInfo.enabledLayerCount = VALIDATION_LAYER_COUNT;
@@ -188,6 +245,7 @@ void createLogicalDevice(VkApp *pApp) {
         exit(1);
     }
     vkGetDeviceQueue(pApp->device, indices.graphicsFamily, 0, &pApp->graphicsQueue);
+    vkGetDeviceQueue(pApp->device, indices.presentFamily, 0, &pApp->presentQueue);
 }
 
 void createSurface(VkApp *pApp) {

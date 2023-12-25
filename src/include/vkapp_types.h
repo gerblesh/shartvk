@@ -25,6 +25,12 @@ void populateVkApp(uint32_t width,uint32_t height, char *title, VkApp *pApp) {
     pApp->graphicsQueue = VK_NULL_HANDLE;
 }
 
+typedef struct {
+    uint32_t graphicsFamily;
+    uint32_t presentFamily;
+    bool requiredFamilesFound;
+} QueueFamilyIndices;
+
 #define VKAPP_MAX_SET_SIZE 10  // Adjust the size according to your needs
 
 typedef struct {
