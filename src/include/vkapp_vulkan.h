@@ -12,10 +12,7 @@ QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surfa
 
 VkSurfaceFormatKHR chooseSwapSurfaceFormat(uint32_t formatCount, VkSurfaceFormatKHR *availableFormats) {
     for (uint32_t i = 0; i < formatCount; i++) {
-        printf("format: %u\n", availableFormats[i].format);
-        printf("colorSpace: %u\n", availableFormats[i].colorSpace);
         if (availableFormats[i].format == VK_FORMAT_B8G8R8A8_SRGB && availableFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-            
             return availableFormats[i];
         }
     }
@@ -54,29 +51,29 @@ VkExtent2D chooseSwapExtent(SDL_Window *window, VkSurfaceCapabilitiesKHR capabil
 }
 
 SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) {
-    SwapChainSupportDetails details;
+    SwapChainSupportDetails details = {0};
 
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
 
     uint32_t formatCount;
     vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, NULL);
+    if (formatCount == 0) {
+        return details;
+    }
     details.formatCount = formatCount;
-
     VkSurfaceFormatKHR formats[formatCount];
     details.formats = formats;
-    if (formatCount != 0) {
-        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats);
-    }
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats);
 
     uint32_t presentModeCount;
     vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, NULL);
+    if (presentModeCount == 0) {
+        return details;
+    }
     details.presentModeCount = presentModeCount;
-
     VkPresentModeKHR presentModes[presentModeCount];
     details.presentModes = presentModes;
-    if (presentCount != 0) {
-        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentCount, details.presentModes);
-    }
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes);
 
     return details;
 }
