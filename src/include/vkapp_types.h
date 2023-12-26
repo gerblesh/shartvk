@@ -11,8 +11,10 @@ typedef struct {
     VkQueue graphicsQueue;
     VkQueue presentQueue;
     VkSwapchainKHR swapChain;
+    uint32_t swapChainImageCount;
     VkImage *swapChainImages;
     VkFormat swapChainImageFormat;
+    VkImageView *swapChainImageViews;
     VkExtent2D swapChainExtent;
 } VkApp;
 
@@ -29,6 +31,8 @@ void populateVkApp(uint32_t width,uint32_t height, char *title, VkApp *pApp) {
     pApp->graphicsQueue = VK_NULL_HANDLE;
     pApp->presentQueue = VK_NULL_HANDLE;
     pApp->swapChain = VK_NULL_HANDLE;
+    pApp->swapChainImages = NULL;
+    pApp->swapChainImageViews = NULL;
 }
 
 typedef struct {

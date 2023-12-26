@@ -25,7 +25,6 @@ VkPresentModeKHR chooseSwapPresentMode(uint32_t presentModeCount, VkPresentModeK
             return availablePresentModes[i];
         }
     }
-
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
@@ -132,10 +131,46 @@ void createSwapChain(VkApp *pApp) {
         exit(1);
     }
     vkGetSwapchainImagesKHR(pApp->device, pApp->swapChain, &imageCount, NULL);
-    VkImage swapChainImages[imageCount];
-    pApp->swapChainImages = swapChainImages;
+    pApp->swapChainImages = (VkImage*)malloc(sizeof(VkImage) * imageCount);
+    if (pApp->swapChainImages == NULL) {
+        fprintf(stderr, "ERROR: unable to allocate for swap chain images!\n");
+        exit(1);
+    }
     vkGetSwapchainImagesKHR(pApp->device, pApp->swapChain, &imageCount, pApp->swapChainImages);
+    pApp->swapChainImageFormat = surfaceFormat.format;
+    pApp->swapChainExtent = extent;
+}
+
+void createImageViews(VkApp *pApp) {
+    pApp->swapChainImageViews = (VkImageView*)malloc(sizeof(VkImageView) * pApp->swapChainImageCount);
+    if (pApp->swapChainImageViews == NULL) {
+        fprintf(stderr, "ERROR: unable to allocate for swap chain image views!\n");
+        exit(1);
+    }
     
+    for (uint32_t i = 0; i < pApp->swapChainImageCount; i++) {
+        VkImageViewCreateInfo createInfo ={
+            .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext = NULL,
+            .flags = 0,
+            .image = pApp->swapChainImages[i],
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format = pApp->swapChainImageFormat,
+            .components.r = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .components.g = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .components.b = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .components.a = VK_COMPONENT_SWIZZLE_IDENTITY,
+            .subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .subresourceRange.baseMipLevel = 0,
+            .subresourceRange.levelCount = 1,
+            .subresourceRange.baseArrayLayer = 0,
+            .subresourceRange.layerCount = 1
+        };
+        if (vkCreateImageView(pApp->device, &createInfo, NULL, &pApp->swapChainImageViews[i]) != VK_SUCCESS) {
+            printf("Failed to create image views!\n");
+            exit(1);
+        }
+    }
 }
 
 bool checkExtensionSupport(uint32_t requiredExtensionCount, const char **requiredExtensions) {
@@ -401,6 +436,7 @@ void createSurface(VkApp *pApp) {
         exit(1);
     }
 }
+
 
 void app_render(VkApp *pApp) {
     return;

@@ -33,6 +33,7 @@ void app_initVulkan(VkApp *pApp) {
     pickPhysicalDevice(pApp);
     createLogicalDevice(pApp);
     createSwapChain(pApp);
+    createImageViews(pApp);
 }
 
 void app_mainLoop(VkApp *pApp) {
@@ -50,6 +51,11 @@ void app_cleanup(VkApp *pApp) {
     if (ENABLE_VALIDATION_LAYERS) {
         DestroyDebugUtilsMessengerEXT(pApp->instance, pApp->debugMessenger, NULL);
     }
+    for (uint32_t i = 0; i < pApp->swapChainImageCount; i++) {
+        vkDestroyImageView(pApp->device, pApp->swapChainImageViews[i], NULL);
+    }
+    free(pApp->swapChainImages);
+    free(pApp->swapChainImageViews);
     vkDestroySwapchainKHR(pApp->device, pApp->swapChain, NULL);
     vkDestroyDevice(pApp->device, NULL);
     vkDestroySurfaceKHR(pApp->instance, pApp->surface, NULL);
