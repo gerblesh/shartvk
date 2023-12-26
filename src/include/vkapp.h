@@ -37,6 +37,8 @@ void app_initVulkan(VkApp *pApp) {
     createRenderPass(pApp);
     createGraphicsPipeline(pApp);
     createFramebuffers(pApp);
+    createCommandPool(pApp);
+    createCommandBuffer(pApp);
 }
 
 void app_mainLoop(VkApp *pApp) {
@@ -54,6 +56,7 @@ void app_cleanup(VkApp *pApp) {
     if (ENABLE_VALIDATION_LAYERS) {
         DestroyDebugUtilsMessengerEXT(pApp->instance, pApp->debugMessenger, NULL);
     }
+    vkDestroyCommandPool(pApp->device, pApp->commandPool, NULL);
     vkDestroyPipeline(pApp->device, pApp->graphicsPipeline, NULL);
     vkDestroyPipelineLayout(pApp->device, pApp->pipelineLayout, NULL);
     vkDestroyRenderPass(pApp->device, pApp->renderPass, NULL);

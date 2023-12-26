@@ -20,6 +20,8 @@ typedef struct {
     VkRenderPass renderPass;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
+    VkCommandPool commandPool;
+    VkCommandBuffer commandBuffer;
 } VkApp;
 
 void populateVkApp(uint32_t width,uint32_t height, char *title, VkApp *pApp) {
