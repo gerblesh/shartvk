@@ -22,6 +22,9 @@ typedef struct {
     VkPipeline graphicsPipeline;
     VkCommandPool commandPool;
     VkCommandBuffer commandBuffer;
+    VkSemaphore imageAvailableSemaphore;
+    VkSemaphore renderFinishedSemaphore;
+    VkFence inFlightFence;
 } VkApp;
 
 void populateVkApp(uint32_t width,uint32_t height, char *title, VkApp *pApp) {

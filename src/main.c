@@ -7,7 +7,7 @@
 
 int main() {
     VkApp app = {0};
-    populateVkApp(600, 800, "shartvk triangle", &app);
+    populateVkApp(1000, 800, "shartvk triangle", &app);
     return app_run(&app);
 }
 

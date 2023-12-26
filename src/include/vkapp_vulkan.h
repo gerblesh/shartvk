@@ -136,13 +136,14 @@ void createSwapChain(VkApp *pApp) {
         fprintf(stderr, "ERROR: unable to allocate for swap chain images!\n");
         exit(1);
     }
+    pApp->swapChainImageCount = imageCount;
     vkGetSwapchainImagesKHR(pApp->device, pApp->swapChain, &imageCount, pApp->swapChainImages);
     pApp->swapChainImageFormat = surfaceFormat.format;
     pApp->swapChainExtent = extent;
 }
 
 void createImageViews(VkApp *pApp) {
-    pApp->swapChainImageViews = (VkImageView*)malloc(sizeof(VkImageView) * pApp->swapChainImageCount);
+    pApp->swapChainImageViews = (VkImageView*)malloc((size_t)pApp->swapChainImageCount * sizeof(VkImageView));
     if (pApp->swapChainImageViews == NULL) {
         fprintf(stderr, "ERROR: unable to allocate for swap chain image views!\n");
         exit(1);
@@ -671,6 +672,16 @@ void createRenderPass(VkApp *pApp) {
         .pPreserveAttachments = NULL
     };
 
+    VkSubpassDependency dependency = {
+        .srcSubpass = VK_SUBPASS_EXTERNAL,
+        .dstSubpass = 0,
+        .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcAccessMask = 0,
+        .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dependencyFlags = 0
+    };
+
     VkRenderPassCreateInfo renderPassInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         .pNext = NULL,
@@ -679,8 +690,8 @@ void createRenderPass(VkApp *pApp) {
         .pAttachments = &colorAttachment,
         .subpassCount = 1,
         .pSubpasses = &subpass,
-        .dependencyCount = 0,
-        .pDependencies = NULL
+        .dependencyCount = 1,
+        .pDependencies = &dependency
     };
 
     if (vkCreateRenderPass(pApp->device, &renderPassInfo, NULL, &pApp->renderPass) != VK_SUCCESS) {
@@ -688,6 +699,7 @@ void createRenderPass(VkApp *pApp) {
         exit(1);
     }
 }
+
 void createFramebuffers(VkApp *pApp) {
     pApp->swapChainFramebuffers = (VkFramebuffer*)malloc(pApp->swapChainImageCount * sizeof(VkFramebuffer));
     if (pApp->swapChainFramebuffers == NULL) {
@@ -696,10 +708,7 @@ void createFramebuffers(VkApp *pApp) {
     }
 
     for (uint32_t i = 0; i < pApp->swapChainImageCount; i++) {
-        VkImageView attachments[] = {
-            pApp->swapChainImageViews[i]
-        };
-        
+        VkImageView attachments[] = {pApp->swapChainImageViews[i]};
         VkFramebufferCreateInfo framebufferInfo = {
             .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
             .pNext = NULL,
@@ -716,6 +725,7 @@ void createFramebuffers(VkApp *pApp) {
             fprintf(stderr, "ERROR: vulkan unable to create framebuffer!\n");
             exit(1);
         }
+
     }
 }
 
@@ -766,12 +776,14 @@ void recordCommandBuffer(VkApp *pApp, VkCommandBuffer commandBuffer, uint32_t im
 
     VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
 
+
     VkRenderPassBeginInfo renderPassInfo = {
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .pNext = NULL,
         .renderPass = pApp->renderPass,
         .framebuffer = pApp->swapChainFramebuffers[imageIndex],
-        .renderArea.offset = {0, 0},
+        .renderArea.offset.x = 0,
+        .renderArea.offset.y = 0,
         .renderArea.extent = pApp->swapChainExtent,
         .clearValueCount = 1,
         .pClearValues = &clearColor
@@ -805,7 +817,70 @@ void recordCommandBuffer(VkApp *pApp, VkCommandBuffer commandBuffer, uint32_t im
     }
 }
 
-void app_render(VkApp *pApp) {
-    return;
+void createSyncObjects(VkApp *pApp) {
+
+    VkSemaphoreCreateInfo semaphoreInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0
+    };
+
+    VkFenceCreateInfo fenceInfo = {
+        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = VK_FENCE_CREATE_SIGNALED_BIT
+    };
+
+    if (vkCreateSemaphore(pApp->device, &semaphoreInfo, NULL, &pApp->imageAvailableSemaphore) != VK_SUCCESS ||
+    vkCreateSemaphore(pApp->device, &semaphoreInfo, NULL, &pApp->renderFinishedSemaphore) != VK_SUCCESS ||
+    vkCreateFence(pApp->device, &fenceInfo, NULL, &pApp->inFlightFence) != VK_SUCCESS) {
+        fprintf(stderr,"ERROR: failed to create sync objects!");
+        exit(1);
+    }
+}
+
+void app_renderFrame(VkApp *pApp) {
+    vkWaitForFences(pApp->device, 1, &pApp->inFlightFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(pApp->device, 1, &pApp->inFlightFence);
+
+    uint32_t imageIndex;
+    vkAcquireNextImageKHR(pApp->device, pApp->swapChain, UINT64_MAX, pApp->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+    vkResetCommandBuffer(pApp->commandBuffer, 0);
+
+    recordCommandBuffer(pApp, pApp->commandBuffer, imageIndex);
+
+    VkSemaphore waitSemaphores[] = {pApp->imageAvailableSemaphore};
+    VkSemaphore signalSemaphores[] = {pApp->renderFinishedSemaphore};
+    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+
+    VkSubmitInfo submitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = NULL,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = waitSemaphores,
+        .pWaitDstStageMask = waitStages,
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = signalSemaphores
+    };
+
+    if (vkQueueSubmit(pApp->graphicsQueue, 1, &submitInfo, pApp->inFlightFence) != VK_SUCCESS) {
+        fprintf(stderr, "ERROR: failed to submit draw command buffer!");
+        exit(1);
+    }
+
+    VkSwapchainKHR swapChains[] = {pApp->swapChain};
+    VkPresentInfoKHR presentInfo = {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .pNext = NULL,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = signalSemaphores,
+        .swapchainCount = 1,
+        .pSwapchains = swapChains,
+        .pImageIndices = &imageIndex,
+        .pResults = NULL
+    };
+
+    vkQueuePresentKHR(pApp->presentQueue, &presentInfo);
+
 }
 

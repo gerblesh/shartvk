@@ -39,6 +39,7 @@ void app_initVulkan(VkApp *pApp) {
     createFramebuffers(pApp);
     createCommandPool(pApp);
     createCommandBuffer(pApp);
+    createSyncObjects(pApp);
 }
 
 void app_mainLoop(VkApp *pApp) {
@@ -48,14 +49,18 @@ void app_mainLoop(VkApp *pApp) {
         if (event.type == SDL_QUIT) {
             break;
         }
-        app_render(pApp);
+        app_renderFrame(pApp);
     }
+    vkDeviceWaitIdle(pApp->device);
 }
 
 void app_cleanup(VkApp *pApp) {
     if (ENABLE_VALIDATION_LAYERS) {
         DestroyDebugUtilsMessengerEXT(pApp->instance, pApp->debugMessenger, NULL);
     }
+    vkDestroySemaphore(pApp->device, pApp->imageAvailableSemaphore, NULL);
+    vkDestroySemaphore(pApp->device, pApp->renderFinishedSemaphore, NULL);
+    vkDestroyFence(pApp->device, pApp->inFlightFence, NULL);
     vkDestroyCommandPool(pApp->device, pApp->commandPool, NULL);
     vkDestroyPipeline(pApp->device, pApp->graphicsPipeline, NULL);
     vkDestroyPipelineLayout(pApp->device, pApp->pipelineLayout, NULL);
