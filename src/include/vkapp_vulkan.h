@@ -131,6 +131,11 @@ void createSwapChain(VkApp *pApp) {
         fprintf(stderr, "ERROR: failed to create swap chain!\n");
         exit(1);
     }
+    vkGetSwapchainImagesKHR(pApp->device, pApp->swapChain, &imageCount, NULL);
+    VkImage swapChainImages[imageCount];
+    pApp->swapChainImages = swapChainImages;
+    vkGetSwapchainImagesKHR(pApp->device, pApp->swapChain, &imageCount, pApp->swapChainImages);
+    
 }
 
 bool checkExtensionSupport(uint32_t requiredExtensionCount, const char **requiredExtensions) {
