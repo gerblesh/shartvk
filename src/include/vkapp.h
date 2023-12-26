@@ -34,6 +34,7 @@ void app_initVulkan(VkApp *pApp) {
     createLogicalDevice(pApp);
     createSwapChain(pApp);
     createImageViews(pApp);
+    createRenderPass(pApp);
     createGraphicsPipeline(pApp);
 }
 
@@ -53,6 +54,7 @@ void app_cleanup(VkApp *pApp) {
         DestroyDebugUtilsMessengerEXT(pApp->instance, pApp->debugMessenger, NULL);
     }
     vkDestroyPipelineLayout(pApp->device, pApp->pipelineLayout, NULL);
+    vkDestroyRenderPass(pApp->device, pApp->renderPass, NULL);
     for (uint32_t i = 0; i < pApp->swapChainImageCount; i++) {
         vkDestroyImageView(pApp->device, pApp->swapChainImageViews[i], NULL);
     }
