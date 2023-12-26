@@ -23,7 +23,7 @@ void app_initSDLWindow(VkApp *pApp) {
         fprintf(stderr, "Failed to create SDL window: %s\n", SDL_GetError());
         exit(1);
     }
-    SDL_SetWindowResizable(pApp->window, SDL_FALSE);
+    // SDL_SetWindowResizable(pApp->window, SDL_FALSE);
 }
 
 void app_initVulkan(VkApp *pApp) {
@@ -38,7 +38,7 @@ void app_initVulkan(VkApp *pApp) {
     createGraphicsPipeline(pApp);
     createFramebuffers(pApp);
     createCommandPool(pApp);
-    createCommandBuffer(pApp);
+    createCommandBuffers(pApp);
     createSyncObjects(pApp);
 }
 
@@ -58,14 +58,15 @@ void app_cleanup(VkApp *pApp) {
     if (ENABLE_VALIDATION_LAYERS) {
         DestroyDebugUtilsMessengerEXT(pApp->instance, pApp->debugMessenger, NULL);
     }
-    vkDestroySemaphore(pApp->device, pApp->imageAvailableSemaphore, NULL);
-    vkDestroySemaphore(pApp->device, pApp->renderFinishedSemaphore, NULL);
-    vkDestroyFence(pApp->device, pApp->inFlightFence, NULL);
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroySemaphore(pApp->device, pApp->imageAvailableSemaphores[i], NULL);
+        vkDestroySemaphore(pApp->device, pApp->renderFinishedSemaphores[i], NULL);
+        vkDestroyFence(pApp->device, pApp->inFlightFences[i], NULL);
+    }
     vkDestroyCommandPool(pApp->device, pApp->commandPool, NULL);
     vkDestroyPipeline(pApp->device, pApp->graphicsPipeline, NULL);
     vkDestroyPipelineLayout(pApp->device, pApp->pipelineLayout, NULL);
     vkDestroyRenderPass(pApp->device, pApp->renderPass, NULL);
-
     for (uint32_t i = 0; i < pApp->swapChainImageCount; i++) {
         vkDestroyImageView(pApp->device, pApp->swapChainImageViews[i], NULL);
         vkDestroyFramebuffer(pApp->device, pApp->swapChainFramebuffers[i], NULL);
@@ -73,6 +74,10 @@ void app_cleanup(VkApp *pApp) {
     free(pApp->swapChainFramebuffers);
     free(pApp->swapChainImages);
     free(pApp->swapChainImageViews);
+    free(pApp->imageAvailableSemaphores);
+    free(pApp->renderFinishedSemaphores);
+    free(pApp->inFlightFences);
+    free(pApp->commandBuffers);
     vkDestroySwapchainKHR(pApp->device, pApp->swapChain, NULL);
     vkDestroyDevice(pApp->device, NULL);
     vkDestroySurfaceKHR(pApp->instance, pApp->surface, NULL);

@@ -3,6 +3,7 @@
 #include "SDL_vulkan.h"
 
 #define DEVICE_EXTENSION_COUNT 1
+#define MAX_FRAMES_IN_FLIGHT 2
 
 const char *deviceExtensions[] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
@@ -37,6 +38,7 @@ VkExtent2D chooseSwapExtent(SDL_Window *window, VkSurfaceCapabilitiesKHR capabil
     int width;
     int height;
     SDL_GL_GetDrawableSize(window, &width, &height);
+    printf("width: %d, height: %d\n", width, height);
 
     VkExtent2D actualExtent = {
         (uint32_t)width,
@@ -463,9 +465,6 @@ void createGraphicsPipeline(VkApp *pApp) {
 
     VkShaderModule vertexShaderModule = createShaderModule(pApp, &vertexShader);
     VkShaderModule fragmentShaderModule = createShaderModule(pApp, &fragmentShader);
-    // free memory from loadShaderFile (no longer needed, we have the shader modules)
-    free(vertexShader.byteCode);
-    free(fragmentShader.byteCode);
 
     VkPipelineShaderStageCreateInfo vertexShaderStageInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -640,6 +639,9 @@ void createGraphicsPipeline(VkApp *pApp) {
 
     vkDestroyShaderModule(pApp->device, fragmentShaderModule, NULL);
     vkDestroyShaderModule(pApp->device, vertexShaderModule, NULL);
+    // free memory from loadShaderFile (no longer needed, we have the shader modules)
+    free(vertexShader.byteCode);
+    free(fragmentShader.byteCode);
 }
 
 void createRenderPass(VkApp *pApp) {
@@ -746,16 +748,17 @@ void createCommandPool(VkApp *pApp) {
 
 }
 
-void createCommandBuffer(VkApp *pApp) {
+void createCommandBuffers(VkApp *pApp) {
+    pApp->commandBuffers = (VkCommandBuffer*)malloc(sizeof(VkCommandBuffer) * MAX_FRAMES_IN_FLIGHT);
     VkCommandBufferAllocateInfo allocInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .pNext = NULL,
         .commandPool = pApp->commandPool,
         .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1
+        .commandBufferCount = MAX_FRAMES_IN_FLIGHT
     };
 
-    if (vkAllocateCommandBuffers(pApp->device, &allocInfo, &pApp->commandBuffer) != VK_SUCCESS) {
+    if (vkAllocateCommandBuffers(pApp->device, &allocInfo, pApp->commandBuffers) != VK_SUCCESS) {
         fprintf(stderr, "ERROR: unable to allocate for command buffers!\n");
         exit(1);
     }
@@ -818,6 +821,9 @@ void recordCommandBuffer(VkApp *pApp, VkCommandBuffer commandBuffer, uint32_t im
 }
 
 void createSyncObjects(VkApp *pApp) {
+    pApp->imageAvailableSemaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
+    pApp->renderFinishedSemaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
+    pApp->inFlightFences = (VkFence*)malloc(sizeof(VkFence) * MAX_FRAMES_IN_FLIGHT);
 
     VkSemaphoreCreateInfo semaphoreInfo = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -831,26 +837,34 @@ void createSyncObjects(VkApp *pApp) {
         .flags = VK_FENCE_CREATE_SIGNALED_BIT
     };
 
-    if (vkCreateSemaphore(pApp->device, &semaphoreInfo, NULL, &pApp->imageAvailableSemaphore) != VK_SUCCESS ||
-    vkCreateSemaphore(pApp->device, &semaphoreInfo, NULL, &pApp->renderFinishedSemaphore) != VK_SUCCESS ||
-    vkCreateFence(pApp->device, &fenceInfo, NULL, &pApp->inFlightFence) != VK_SUCCESS) {
-        fprintf(stderr,"ERROR: failed to create sync objects!");
-        exit(1);
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        if (vkCreateSemaphore(pApp->device, &semaphoreInfo, NULL, &pApp->imageAvailableSemaphores[i]) != VK_SUCCESS) {
+            fprintf(stderr, "ERROR: Failed to create imageAvailableSemaphore!\n");
+            exit(1);
+        }
+        if (vkCreateSemaphore(pApp->device, &semaphoreInfo, NULL, &pApp->renderFinishedSemaphores[i]) != VK_SUCCESS) {
+            fprintf(stderr, "ERROR: Failed to create renderFinishedSemaphore!\n");
+            exit(1);
+        }
+        if (vkCreateFence(pApp->device, &fenceInfo, NULL, &pApp->inFlightFences[i]) != VK_SUCCESS) {
+            fprintf(stderr, "ERROR: Failed to create fence!\n");
+            exit(1);
+        }
     }
 }
 
 void app_renderFrame(VkApp *pApp) {
-    vkWaitForFences(pApp->device, 1, &pApp->inFlightFence, VK_TRUE, UINT64_MAX);
-    vkResetFences(pApp->device, 1, &pApp->inFlightFence);
+    vkWaitForFences(pApp->device, 1, &pApp->inFlightFences[pApp->currentFrame], VK_TRUE, UINT64_MAX);
+    vkResetFences(pApp->device, 1, &pApp->inFlightFences[pApp->currentFrame]);
 
     uint32_t imageIndex;
-    vkAcquireNextImageKHR(pApp->device, pApp->swapChain, UINT64_MAX, pApp->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
-    vkResetCommandBuffer(pApp->commandBuffer, 0);
+    vkAcquireNextImageKHR(pApp->device, pApp->swapChain, UINT64_MAX, pApp->imageAvailableSemaphores[pApp->currentFrame], VK_NULL_HANDLE, &imageIndex);
+    vkResetCommandBuffer(pApp->commandBuffers[pApp->currentFrame], 0);
 
-    recordCommandBuffer(pApp, pApp->commandBuffer, imageIndex);
+    recordCommandBuffer(pApp, pApp->commandBuffers[pApp->currentFrame], imageIndex);
 
-    VkSemaphore waitSemaphores[] = {pApp->imageAvailableSemaphore};
-    VkSemaphore signalSemaphores[] = {pApp->renderFinishedSemaphore};
+    VkSemaphore waitSemaphores[] = {pApp->imageAvailableSemaphores[pApp->currentFrame]};
+    VkSemaphore signalSemaphores[] = {pApp->renderFinishedSemaphores[pApp->currentFrame]};
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
     VkSubmitInfo submitInfo = {
@@ -859,11 +873,13 @@ void app_renderFrame(VkApp *pApp) {
         .waitSemaphoreCount = 1,
         .pWaitSemaphores = waitSemaphores,
         .pWaitDstStageMask = waitStages,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &pApp->commandBuffers[pApp->currentFrame],
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = signalSemaphores
     };
 
-    if (vkQueueSubmit(pApp->graphicsQueue, 1, &submitInfo, pApp->inFlightFence) != VK_SUCCESS) {
+    if (vkQueueSubmit(pApp->graphicsQueue, 1, &submitInfo, pApp->inFlightFences[pApp->currentFrame]) != VK_SUCCESS) {
         fprintf(stderr, "ERROR: failed to submit draw command buffer!");
         exit(1);
     }
@@ -882,5 +898,6 @@ void app_renderFrame(VkApp *pApp) {
 
     vkQueuePresentKHR(pApp->presentQueue, &presentInfo);
 
+    pApp->currentFrame = (pApp->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
