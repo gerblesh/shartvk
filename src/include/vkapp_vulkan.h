@@ -437,6 +437,61 @@ void createSurface(VkApp *pApp) {
     }
 }
 
+VkShaderModule createShaderModule(VkApp *pApp, ShaderFile *file) {
+    VkShaderModuleCreateInfo shaderModuleCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .codeSize = file->size,
+        .pCode = (uint32_t*)file->byteCode
+    };
+
+    VkShaderModule shaderModule;
+    if (vkCreateShaderModule(pApp->device, &shaderModuleCreateInfo, NULL, &shaderModule) != VK_SUCCESS) {
+        fprintf(stderr, "ERROR: unable to create vulkan shader module!\n");
+        exit(1);
+    }
+    return shaderModule;
+}
+
+void createGraphicsPipeline(VkApp *pApp) {
+    ShaderFile vertexShader = {0};
+    ShaderFile fragmentShader = {0};
+    loadShaderFile("shaders/vert.spv", &vertexShader);
+    loadShaderFile("shaders/frag.spv", &fragmentShader);
+
+    VkShaderModule vertexShaderModule = createShaderModule(pApp, &vertexShader);
+    VkShaderModule fragmentShaderModule = createShaderModule(pApp, &fragmentShader);
+    // free memory from loadShaderFile (no longer needed, we have the shader modules)
+    free(vertexShader.byteCode);
+    free(fragmentShader.byteCode);
+
+    VkPipelineShaderStageCreateInfo vertexShaderStageInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        .pNext = NULL,
+        .flags = 0,
+        .stage = VK_SHADER_STAGE_VERTEX_BIT,
+        .module = vertexShaderModule,
+        .pName = "main",
+        .pSpecializationInfo = NULL
+    };
+
+    VkPipelineShaderStageCreateInfo fragmentShaderStageInfo = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        .pNext = NULL,
+        .flags = 0,
+        .stage = VK_SHADER_STAGE_VERTEX_BIT,
+        .module = fragmentShaderModule,
+        .pName = "main",
+        .pSpecializationInfo = NULL
+    };
+
+    VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+    vkDestroyShaderModule(pApp->device, fragmentShaderModule, NULL);
+    vkDestroyShaderModule(pApp->device, vertexShaderModule, NULL);
+
+}
 
 void app_render(VkApp *pApp) {
     return;

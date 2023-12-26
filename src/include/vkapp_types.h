@@ -80,3 +80,32 @@ uint32_t u32Clamp(uint32_t n, uint32_t min, uint32_t max) {
     if (n < min) return min;
     return n;
 }
+
+typedef struct {
+  size_t size;
+  char *byteCode;
+} ShaderFile;
+
+void loadShaderFile(const char *filePath, ShaderFile *shaderFile) {
+    FILE *pFile = fopen(filePath, "rb");
+
+    if (pFile == NULL) {
+        fprintf(stderr, "ERROR: unable to open file: %s\n", filePath);
+        exit(1);
+    }
+
+    fseek(pFile, 0L, SEEK_END);
+    shaderFile->size = ftell(pFile);
+
+    // Allocate memory for the code
+    shaderFile->byteCode = (char *)malloc(shaderFile->size);
+    if (shaderFile->byteCode == NULL) {
+        fclose(pFile);
+        fprintf(stderr, "ERROR: Failed to allocate memory for file: %s\n", filePath);
+        exit(1);
+    }
+
+    fseek(pFile, 0L, SEEK_SET);
+    fread(shaderFile->byteCode, shaderFile->size, sizeof(char), pFile);
+    fclose(pFile);
+}

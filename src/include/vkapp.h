@@ -34,6 +34,7 @@ void app_initVulkan(VkApp *pApp) {
     createLogicalDevice(pApp);
     createSwapChain(pApp);
     createImageViews(pApp);
+    createGraphicsPipeline(pApp);
 }
 
 void app_mainLoop(VkApp *pApp) {

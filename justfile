@@ -19,5 +19,9 @@ build:
         cd target && \
         meson compile
 
+compile-shaders:
+        glslc shaders/shader.frag -o shaders/frag.spv
+        glslc shaders/shader.vert -o shaders/vert.spv
+
 run: build
         VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation ./target/shartvk
