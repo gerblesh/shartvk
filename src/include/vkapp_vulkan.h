@@ -480,7 +480,7 @@ void createGraphicsPipeline(VkApp *pApp) {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .pNext = NULL,
         .flags = 0,
-        .stage = VK_SHADER_STAGE_VERTEX_BIT,
+        .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
         .module = fragmentShaderModule,
         .pName = "main",
         .pSpecializationInfo = NULL
@@ -605,14 +605,40 @@ void createGraphicsPipeline(VkApp *pApp) {
         .pushConstantRangeCount = 0,
         .pPushConstantRanges = NULL
     };
+
     if (vkCreatePipelineLayout(pApp->device, &pipelineLayoutInfo, NULL, &pApp->pipelineLayout) != VK_SUCCESS) {
         fprintf(stderr, "ERROR: pipeline layout creation failed!");
         exit(1);
     }
 
+    VkGraphicsPipelineCreateInfo pipelineInfo = {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .pNext = NULL,
+        .flags = 0,
+        .stageCount = 2,
+        .pStages = shaderStages,
+        .pVertexInputState = &vertexInputInfo,
+        .pInputAssemblyState = &inputAssembly,
+        .pTessellationState = NULL,
+        .pViewportState = &viewportState,
+        .pRasterizationState = &rasterizer,
+        .pMultisampleState = &multisampling,
+        .pDepthStencilState = NULL,
+        .pColorBlendState = &colorBlending,
+        .pDynamicState = &dynamicState,
+        .layout = pApp->pipelineLayout,
+        .renderPass = pApp->renderPass,
+        .subpass = 0,
+        .basePipelineHandle = VK_NULL_HANDLE,
+        .basePipelineIndex = -1
+    };
+    if (vkCreateGraphicsPipelines(pApp->device, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &pApp->graphicsPipeline) != VK_SUCCESS) {
+        fprintf(stderr, "ERROR: Failed to create graphics pipeline!\n");
+        exit(1);
+    }
+
     vkDestroyShaderModule(pApp->device, fragmentShaderModule, NULL);
     vkDestroyShaderModule(pApp->device, vertexShaderModule, NULL);
-
 }
 
 void createRenderPass(VkApp *pApp) {

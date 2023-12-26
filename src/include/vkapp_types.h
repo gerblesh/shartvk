@@ -18,6 +18,7 @@ typedef struct {
     VkExtent2D swapChainExtent;
     VkRenderPass renderPass;
     VkPipelineLayout pipelineLayout;
+    VkPipeline graphicsPipeline;
 } VkApp;
 
 void populateVkApp(uint32_t width,uint32_t height, char *title, VkApp *pApp) {
