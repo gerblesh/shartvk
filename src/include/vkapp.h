@@ -32,6 +32,7 @@ void app_initVulkan(VkApp *pApp) {
     createSurface(pApp);
     pickPhysicalDevice(pApp);
     createLogicalDevice(pApp);
+    createSwapChain(pApp);
 }
 
 void app_mainLoop(VkApp *pApp) {
@@ -49,6 +50,7 @@ void app_cleanup(VkApp *pApp) {
     if (ENABLE_VALIDATION_LAYERS) {
         DestroyDebugUtilsMessengerEXT(pApp->instance, pApp->debugMessenger, NULL);
     }
+    vkDestroySwapchainKHR(pApp->device, pApp->swapChain, NULL);
     vkDestroyDevice(pApp->device, NULL);
     vkDestroySurfaceKHR(pApp->instance, pApp->surface, NULL);
     vkDestroyInstance(pApp->instance, NULL);

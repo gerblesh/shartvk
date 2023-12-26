@@ -8,13 +8,17 @@ const char *deviceExtensions[] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
+QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
+
 VkSurfaceFormatKHR chooseSwapSurfaceFormat(uint32_t formatCount, VkSurfaceFormatKHR *availableFormats) {
     for (uint32_t i = 0; i < formatCount; i++) {
+        printf("format: %u\n", availableFormats[i].format);
+        printf("colorSpace: %u\n", availableFormats[i].colorSpace);
         if (availableFormats[i].format == VK_FORMAT_B8G8R8A8_SRGB && availableFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+            
             return availableFormats[i];
         }
     }
-
     return availableFormats[0];
 }
 
@@ -51,23 +55,29 @@ VkExtent2D chooseSwapExtent(SDL_Window *window, VkSurfaceCapabilitiesKHR capabil
 
 SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface) {
     SwapChainSupportDetails details;
+
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
 
-    // uint32_t formatCount;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &details.formatCount, NULL);
-    if (details.formatCount != 0) {
-        VkSurfaceFormatKHR formats[details.formatCount];
-        details.formats = formats;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &details.formatCount, details.formats);
+    uint32_t formatCount;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, NULL);
+    details.formatCount = formatCount;
+
+    VkSurfaceFormatKHR formats[formatCount];
+    details.formats = formats;
+    if (formatCount != 0) {
+        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats);
     }
 
-    // uint32_t details.presentModeCount;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &details.presentModeCount, NULL);
-    if (details.presentModeCount != 0) {
-        VkPresentModeKHR presentModes[details.presentModeCount];
-        details.presentModes = presentModes;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &details.presentModeCount, details.presentModes);
+    uint32_t presentModeCount;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, NULL);
+    details.presentModeCount = presentModeCount;
+
+    VkPresentModeKHR presentModes[presentModeCount];
+    details.presentModes = presentModes;
+    if (presentCount != 0) {
+        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentCount, details.presentModes);
     }
+
     return details;
 }
 
@@ -79,9 +89,50 @@ void createSwapChain(VkApp *pApp) {
 
     // reccommended to request at least one more image than minimum so we don't have to wait for the driver
     uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
-    
+    // 0 is a "special value" in that it denotes that there is no max image count for the swapchain
     if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
         imageCount = swapChainSupport.capabilities.maxImageCount;
+    }
+
+    VkSwapchainCreateInfoKHR swapChainCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .pNext = NULL,
+        .flags = 0,
+        .surface = pApp->surface,
+        .minImageCount = imageCount,
+        .imageFormat = surfaceFormat.format,
+        .imageColorSpace = surfaceFormat.colorSpace,
+        .imageExtent = extent,
+        .imageArrayLayers = 1,
+        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        
+        .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices = NULL,
+        
+        .preTransform = swapChainSupport.capabilities.currentTransform,
+        .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .presentMode = presentMode,
+        .clipped = VK_TRUE,
+        .oldSwapchain = VK_NULL_HANDLE
+    };
+
+    QueueFamilyIndices indices = findQueueFamilies(pApp->physicalDevice, pApp->surface);
+
+    UInt32Set uniqueQueueFamilies;
+    initUInt32Set(&uniqueQueueFamilies);
+    uint32SetInsert(&uniqueQueueFamilies, indices.graphicsFamily);
+    uint32SetInsert(&uniqueQueueFamilies, indices.presentFamily);
+    
+    if (uniqueQueueFamilies.size > 1) {
+        swapChainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        swapChainCreateInfo.queueFamilyIndexCount = uniqueQueueFamilies.size;
+        swapChainCreateInfo.pQueueFamilyIndices = uniqueQueueFamilies.data;
+    }
+
+    if (vkCreateSwapchainKHR(pApp->device, &swapChainCreateInfo, NULL, &pApp->swapChain) != VK_SUCCESS) {
+        fprintf(stderr, "ERROR: failed to create swap chain!\n");
+        exit(1);
     }
 }
 

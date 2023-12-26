@@ -10,6 +10,7 @@ typedef struct {
     VkDevice device;
     VkQueue graphicsQueue;
     VkQueue presentQueue;
+    VkSwapchainKHR swapChain;
 } VkApp;
 
 void populateVkApp(uint32_t width,uint32_t height, char *title, VkApp *pApp) {
@@ -23,6 +24,8 @@ void populateVkApp(uint32_t width,uint32_t height, char *title, VkApp *pApp) {
     pApp->physicalDevice = VK_NULL_HANDLE;
     pApp->device = VK_NULL_HANDLE;
     pApp->graphicsQueue = VK_NULL_HANDLE;
+    pApp->presentQueue = VK_NULL_HANDLE;
+    pApp->swapChain = VK_NULL_HANDLE;
 }
 
 typedef struct {
@@ -43,7 +46,7 @@ typedef struct {
 
 typedef struct {
     uint32_t data[VKAPP_MAX_SET_SIZE];
-    size_t size;
+    uint32_t size;
 } UInt32Set;
 
 void initUInt32Set(UInt32Set *set) {
