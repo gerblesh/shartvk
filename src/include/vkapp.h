@@ -36,6 +36,7 @@ void app_initVulkan(VkApp *pApp) {
     createImageViews(pApp);
     createRenderPass(pApp);
     createGraphicsPipeline(pApp);
+    createFramebuffers(pApp);
 }
 
 void app_mainLoop(VkApp *pApp) {
@@ -57,10 +58,11 @@ void app_cleanup(VkApp *pApp) {
     vkDestroyPipelineLayout(pApp->device, pApp->pipelineLayout, NULL);
     vkDestroyRenderPass(pApp->device, pApp->renderPass, NULL);
 
-
     for (uint32_t i = 0; i < pApp->swapChainImageCount; i++) {
         vkDestroyImageView(pApp->device, pApp->swapChainImageViews[i], NULL);
+        vkDestroyFramebuffer(pApp->device, pApp->swapChainFramebuffers[i], NULL);
     }
+    free(pApp->swapChainFramebuffers);
     free(pApp->swapChainImages);
     free(pApp->swapChainImageViews);
     vkDestroySwapchainKHR(pApp->device, pApp->swapChain, NULL);

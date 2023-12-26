@@ -15,6 +15,7 @@ typedef struct {
     VkImage *swapChainImages;
     VkFormat swapChainImageFormat;
     VkImageView *swapChainImageViews;
+    VkFramebuffer *swapChainFramebuffers;
     VkExtent2D swapChainExtent;
     VkRenderPass renderPass;
     VkPipelineLayout pipelineLayout;

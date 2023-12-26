@@ -688,6 +688,36 @@ void createRenderPass(VkApp *pApp) {
         exit(1);
     }
 }
+void createFramebuffers(VkApp *pApp) {
+    pApp->swapChainFramebuffers = (VkFramebuffer*)malloc(pApp->swapChainImageCount * sizeof(VkFramebuffer));
+    if (pApp->swapChainFramebuffers == NULL) {
+        fprintf(stderr, "ERROR: unable to allocate for framebuffers\n");
+        exit(1);
+    }
+
+    for (uint32_t i = 0; i < pApp->swapChainImageCount; i++) {
+        VkImageView attachments[] = {
+            pApp->swapChainImageViews[i]
+        };
+        
+        VkFramebufferCreateInfo framebufferInfo = {
+            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .pNext = NULL,
+            .flags = 0,
+            .renderPass = pApp->renderPass,
+            .attachmentCount = 1,
+            .pAttachments = attachments,
+            .width = pApp->swapChainExtent.width,
+            .height = pApp->swapChainExtent.height,
+            .layers = 1
+        };
+
+        if (vkCreateFramebuffer(pApp->device, &framebufferInfo, NULL, &pApp->swapChainFramebuffers[i]) != VK_SUCCESS) {
+            fprintf(stderr, "ERROR: vulkan unable to create framebuffer!\n");
+            exit(1);
+        }
+    }
+}
 
 void app_render(VkApp *pApp) {
     return;
