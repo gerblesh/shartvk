@@ -52,6 +52,7 @@ void app_cleanup(VkApp *pApp) {
     if (ENABLE_VALIDATION_LAYERS) {
         DestroyDebugUtilsMessengerEXT(pApp->instance, pApp->debugMessenger, NULL);
     }
+    vkDestroyPipelineLayout(pApp->device, pApp->pipelineLayout, NULL);
     for (uint32_t i = 0; i < pApp->swapChainImageCount; i++) {
         vkDestroyImageView(pApp->device, pApp->swapChainImageViews[i], NULL);
     }

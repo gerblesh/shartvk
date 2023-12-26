@@ -16,6 +16,7 @@ typedef struct {
     VkFormat swapChainImageFormat;
     VkImageView *swapChainImageViews;
     VkExtent2D swapChainExtent;
+    VkPipelineLayout pipelineLayout;
 } VkApp;
 
 void populateVkApp(uint32_t width,uint32_t height, char *title, VkApp *pApp) {
@@ -33,6 +34,7 @@ void populateVkApp(uint32_t width,uint32_t height, char *title, VkApp *pApp) {
     pApp->swapChain = VK_NULL_HANDLE;
     pApp->swapChainImages = NULL;
     pApp->swapChainImageViews = NULL;
+    pApp->pipelineLayout = VK_NULL_HANDLE;
 }
 
 typedef struct {
