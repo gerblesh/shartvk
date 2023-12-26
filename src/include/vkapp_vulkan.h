@@ -853,12 +853,41 @@ void createSyncObjects(VkApp *pApp) {
     }
 }
 
+void cleanupSwapChain(VkApp *pApp) {
+    for (uint32_t i = 0; i < pApp->swapChainImageCount; i++) {
+        vkDestroyImageView(pApp->device, pApp->swapChainImageViews[i], NULL);
+        vkDestroyFramebuffer(pApp->device, pApp->swapChainFramebuffers[i], NULL);
+    }
+    vkDestroySwapchainKHR(pApp->device, pApp->swapChain, NULL);
+}
+
+void recreateSwapChain(VkApp *pApp) {
+    vkDeviceWaitIdle(pApp->device);
+
+    cleanupSwapChain(pApp);
+
+    createSwapChain(pApp);
+    createImageViews(pApp);
+    createFramebuffers(pApp);
+}
+
 void app_renderFrame(VkApp *pApp) {
     vkWaitForFences(pApp->device, 1, &pApp->inFlightFences[pApp->currentFrame], VK_TRUE, UINT64_MAX);
-    vkResetFences(pApp->device, 1, &pApp->inFlightFences[pApp->currentFrame]);
 
     uint32_t imageIndex;
-    vkAcquireNextImageKHR(pApp->device, pApp->swapChain, UINT64_MAX, pApp->imageAvailableSemaphores[pApp->currentFrame], VK_NULL_HANDLE, &imageIndex);
+    VkResult result = vkAcquireNextImageKHR(pApp->device, pApp->swapChain, UINT64_MAX, pApp->imageAvailableSemaphores[pApp->currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+        recreateSwapChain(pApp);
+        return;
+    } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+        fprintf(stderr,"ERROR: failed to acquire swap chain image!");
+        exit(1);
+    }
+    // Only reset the fence if we are submitting work
+    vkResetFences(pApp->device, 1, &pApp->inFlightFences[pApp->currentFrame]);
+
+
     vkResetCommandBuffer(pApp->commandBuffers[pApp->currentFrame], 0);
 
     recordCommandBuffer(pApp, pApp->commandBuffers[pApp->currentFrame], imageIndex);

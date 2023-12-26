@@ -23,7 +23,7 @@ void app_initSDLWindow(VkApp *pApp) {
         fprintf(stderr, "Failed to create SDL window: %s\n", SDL_GetError());
         exit(1);
     }
-    // SDL_SetWindowResizable(pApp->window, SDL_FALSE);
+    SDL_SetWindowResizable(pApp->window, SDL_TRUE);
 }
 
 void app_initVulkan(VkApp *pApp) {
@@ -49,6 +49,14 @@ void app_mainLoop(VkApp *pApp) {
         if (event.type == SDL_QUIT) {
             break;
         }
+        if (event.type == SDL_WINDOWEVENT) {
+            // recreateSwapChain(pApp);
+            // continue;
+            if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                recreateSwapChain(pApp);
+                continue;
+            }
+        }
         app_renderFrame(pApp);
     }
     vkDeviceWaitIdle(pApp->device);
@@ -67,10 +75,7 @@ void app_cleanup(VkApp *pApp) {
     vkDestroyPipeline(pApp->device, pApp->graphicsPipeline, NULL);
     vkDestroyPipelineLayout(pApp->device, pApp->pipelineLayout, NULL);
     vkDestroyRenderPass(pApp->device, pApp->renderPass, NULL);
-    for (uint32_t i = 0; i < pApp->swapChainImageCount; i++) {
-        vkDestroyImageView(pApp->device, pApp->swapChainImageViews[i], NULL);
-        vkDestroyFramebuffer(pApp->device, pApp->swapChainFramebuffers[i], NULL);
-    }
+    cleanupSwapChain(pApp);
     free(pApp->swapChainFramebuffers);
     free(pApp->swapChainImages);
     free(pApp->swapChainImageViews);
@@ -78,7 +83,6 @@ void app_cleanup(VkApp *pApp) {
     free(pApp->renderFinishedSemaphores);
     free(pApp->inFlightFences);
     free(pApp->commandBuffers);
-    vkDestroySwapchainKHR(pApp->device, pApp->swapChain, NULL);
     vkDestroyDevice(pApp->device, NULL);
     vkDestroySurfaceKHR(pApp->instance, pApp->surface, NULL);
     vkDestroyInstance(pApp->instance, NULL);
