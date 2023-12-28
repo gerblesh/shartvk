@@ -5,7 +5,7 @@ project(
     license : 'MIT',
     meson_version : '>= 0.56',
     default_options : [
-        'c_std=gnu11',
+        'c_std=c11',
         'buildtype=debug',
         'default_library=static'
     ]
@@ -30,4 +30,3 @@ executable = executable(
 
 # Set the output directory to ${PROJECTROOT}/target
 install_dir = join_paths(meson.source_root(), 'target')
-

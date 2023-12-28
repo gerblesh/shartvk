@@ -1,9 +1,10 @@
-#define ENABLE_VALIDATION_LAYERS true
+// #define ENABLE_VALIDATION_LAYERS
 #define VALIDATION_LAYER_COUNT 1
-
+#ifdef ENABLE_VALIDATION_LAYERS
 const char *validationLayers[] = {
     "VK_LAYER_KHRONOS_validation"
 };
+#endif
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pDebugMessenger) {
     PFN_vkCreateDebugUtilsMessengerEXT func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
@@ -42,18 +43,23 @@ void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT *create
 }
 
 void setupDebugMessenger(VkApp *pApp) {
-    if (!ENABLE_VALIDATION_LAYERS) return;
+#ifndef ENABLE_VALIDATION_LAYERS
+    return;
+#else
     VkDebugUtilsMessengerCreateInfoEXT createInfo = {0};
     populateDebugMessengerCreateInfo(&createInfo);
     if (CreateDebugUtilsMessengerEXT(pApp->instance, &createInfo, NULL, &pApp->debugMessenger) != VK_SUCCESS) {
         fprintf(stderr, "failed to set up debug messenger!");
         exit(1);
     }
+#endif
 }
 
 bool checkValidationLayerSupport() {
     // if the validation layers are disabled, immediately exit out
-    if (!ENABLE_VALIDATION_LAYERS) return true;
+#ifndef ENABLE_VALIDATION_LAYERS
+    return true;
+#else
     // get the available layers
     uint32_t layerCount = 0;
     vkEnumerateInstanceLayerProperties(&layerCount, NULL);
@@ -79,5 +85,6 @@ bool checkValidationLayerSupport() {
         }
     }
     return true;
+#endif
 }
 

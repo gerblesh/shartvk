@@ -38,7 +38,6 @@ VkExtent2D chooseSwapExtent(SDL_Window *window, VkSurfaceCapabilitiesKHR capabil
     int width;
     int height;
     SDL_GL_GetDrawableSize(window, &width, &height);
-    printf("width: %d, height: %d\n", width, height);
 
     VkExtent2D actualExtent = {
         (uint32_t)width,
@@ -254,16 +253,16 @@ void app_createVulkanInstance(VkApp *pApp) {
         .pApplicationInfo = &appInfo,
     };
 
-    if (ENABLE_VALIDATION_LAYERS) {
+#ifdef ENABLE_VALIDATION_LAYERS
         VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo = {0};
         populateDebugMessengerCreateInfo(&debugCreateInfo);
         createInfo.enabledLayerCount = VALIDATION_LAYER_COUNT;
         createInfo.ppEnabledLayerNames = validationLayers;
         createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugCreateInfo;
-    } else {
+#else
         createInfo.ppEnabledLayerNames = NULL;
         createInfo.enabledLayerCount = 0;
-    }
+#endif
 
     // get extension count first
     uint32_t sdlExtensionCount = 0;
@@ -284,11 +283,10 @@ void app_createVulkanInstance(VkApp *pApp) {
     for (int i = 0; i < sdlExtensionCount; i++) {
             extensions[i] = sdlExtensions[i];
     }
-    if (ENABLE_VALIDATION_LAYERS) {
+#ifdef ENABLE_VALIDATION_LAYERS
         extensions[extensionCount] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
         extensionCount++;
-    }
-
+#endif
 
     createInfo.enabledExtensionCount = extensionCount;
     createInfo.ppEnabledExtensionNames = extensions;
@@ -299,8 +297,11 @@ void app_createVulkanInstance(VkApp *pApp) {
     }
 
     VkResult result = vkCreateInstance(&createInfo, NULL, &pApp->instance);
+    if (result != VK_SUCCESS) {
+        printf("ERROR: Failed to create VkInstance");
+        exit(1);
+    }
     printf("Successfully created vkInstance!\n");
-    assert(result == VK_SUCCESS);
 }
 
 QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) {
@@ -418,13 +419,13 @@ void createLogicalDevice(VkApp *pApp) {
         .enabledExtensionCount = DEVICE_EXTENSION_COUNT,
         .ppEnabledExtensionNames = deviceExtensions,
     };
-    if (ENABLE_VALIDATION_LAYERS) {
+#ifdef ENABLE_VALIDATION_LAYERS
         logicalDeviceCreateInfo.enabledLayerCount = VALIDATION_LAYER_COUNT;
         logicalDeviceCreateInfo.ppEnabledLayerNames = validationLayers;
-    } else {
+#else
         logicalDeviceCreateInfo.enabledLayerCount = 0;
         logicalDeviceCreateInfo.ppEnabledLayerNames = NULL;
-    }
+#endif
     if (vkCreateDevice(pApp->physicalDevice, &logicalDeviceCreateInfo, NULL, &pApp->device) != VK_SUCCESS) {
         fprintf(stderr,"failed to create logical device!\n");
         exit(1);

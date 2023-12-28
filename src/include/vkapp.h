@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <assert.h>
 #include <stdbool.h>
 #include <string.h>
 #include <limits.h>
@@ -63,9 +62,9 @@ void app_mainLoop(VkApp *pApp) {
 }
 
 void app_cleanup(VkApp *pApp) {
-    if (ENABLE_VALIDATION_LAYERS) {
-        DestroyDebugUtilsMessengerEXT(pApp->instance, pApp->debugMessenger, NULL);
-    }
+#ifdef ENABLE_VALIDATION_LAYERS
+    DestroyDebugUtilsMessengerEXT(pApp->instance, pApp->debugMessenger, NULL);
+#endif
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroySemaphore(pApp->device, pApp->imageAvailableSemaphores[i], NULL);
         vkDestroySemaphore(pApp->device, pApp->renderFinishedSemaphores[i], NULL);
