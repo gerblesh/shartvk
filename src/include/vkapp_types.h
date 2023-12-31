@@ -1,3 +1,6 @@
+#include "cglm/cglm.h"
+#define MAX_FRAMES_IN_FLIGHT 2
+
 typedef struct {
     uint32_t width;
     uint32_t height;
@@ -18,13 +21,23 @@ typedef struct {
     VkFramebuffer *swapChainFramebuffers;
     VkExtent2D swapChainExtent;
     VkRenderPass renderPass;
+    VkDescriptorSetLayout descriptorSetLayout;
     VkPipelineLayout pipelineLayout;
     VkPipeline graphicsPipeline;
     VkCommandPool commandPool;
-    VkCommandBuffer *commandBuffers;
-    VkSemaphore *imageAvailableSemaphores;
-    VkSemaphore *renderFinishedSemaphores;
-    VkFence *inFlightFences;
+    VkCommandBuffer commandBuffers[MAX_FRAMES_IN_FLIGHT];
+    VkBuffer vertexBuffer;
+    VkDeviceMemory vertexBufferMemory;
+    VkBuffer indexBuffer;
+    VkDeviceMemory indexBufferMemory;
+    VkBuffer uniformBuffers[MAX_FRAMES_IN_FLIGHT];
+    VkDeviceMemory uniformBuffersMemory[MAX_FRAMES_IN_FLIGHT];
+    void* uniformBuffersMapped[MAX_FRAMES_IN_FLIGHT];
+    VkDescriptorPool descriptorPool;
+    VkDescriptorSet descriptorSets[MAX_FRAMES_IN_FLIGHT];
+    VkSemaphore imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
+    VkSemaphore renderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+    VkFence inFlightFences[MAX_FRAMES_IN_FLIGHT];
     uint32_t currentFrame;
 } VkApp;
 
@@ -61,7 +74,7 @@ typedef struct {
     bool requiredFamilesFound;
 } QueueFamilyIndices;
 
-#define VKAPP_MAX_SET_SIZE 10  // Adjust the size according to your needs
+#define VKAPP_MAX_SET_SIZE 10
 
 typedef struct {
     uint32_t data[VKAPP_MAX_SET_SIZE];
@@ -94,8 +107,8 @@ uint32_t u32Clamp(uint32_t n, uint32_t min, uint32_t max) {
 }
 
 typedef struct {
-  size_t size;
-  char *byteCode;
+    size_t size;
+    char *byteCode;
 } ShaderFile;
 
 void loadShaderFile(const char *filePath, ShaderFile *shaderFile) {
@@ -120,4 +133,36 @@ void loadShaderFile(const char *filePath, ShaderFile *shaderFile) {
     fseek(pFile, 0L, SEEK_SET);
     fread(shaderFile->byteCode, shaderFile->size, sizeof(char), pFile);
     fclose(pFile);
+}
+
+typedef struct {
+    vec2 pos;
+    vec3 color;
+} Vertex;
+
+typedef struct {
+    mat4 model;
+    mat4 view;
+    mat4 proj;
+} UniformBufferObject;
+
+VkVertexInputBindingDescription getVertexBindingDescription() {
+    VkVertexInputBindingDescription bindingDescription = {0};
+    bindingDescription.binding = 0;
+    bindingDescription.stride = sizeof(Vertex);
+    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    return bindingDescription;
+}
+
+void getVertexAttributeDescriptions(VkVertexInputAttributeDescription *attributeDescriptions) {
+    // setting attribute description for vertex position
+    attributeDescriptions[0].binding = 0;
+    attributeDescriptions[0].location = 0;
+    attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+    attributeDescriptions[0].offset = offsetof(Vertex, pos);
+    // setting attribute description for vertex color
+    attributeDescriptions[1].binding = 0;
+    attributeDescriptions[1].location = 1;
+    attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescriptions[1].offset = offsetof(Vertex, color);
 }

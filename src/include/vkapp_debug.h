@@ -1,4 +1,4 @@
-// #define ENABLE_VALIDATION_LAYERS
+#define ENABLE_VALIDATION_LAYERS
 #define VALIDATION_LAYER_COUNT 1
 #ifdef ENABLE_VALIDATION_LAYERS
 const char *validationLayers[] = {

@@ -3,13 +3,27 @@
 #include "SDL_vulkan.h"
 
 #define DEVICE_EXTENSION_COUNT 1
-#define MAX_FRAMES_IN_FLIGHT 2
 
 const char *deviceExtensions[] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
+
+uint32_t modelVertexCount = 4;
+Vertex modelVertices[] = {
+    {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
+};
+
+uint32_t modelIndexCount = 6;
+uint16_t modelIndices[] = {
+    0, 1, 2, 2, 3, 0
+};
+
 QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
+void updateUniformBuffer(uint32_t currentImage, VkApp *pApp);
 
 VkSurfaceFormatKHR chooseSwapSurfaceFormat(uint32_t formatCount, VkSurfaceFormatKHR *availableFormats) {
     for (uint32_t i = 0; i < formatCount; i++) {
@@ -502,14 +516,18 @@ void createGraphicsPipeline(VkApp *pApp) {
         .pDynamicStates = dynamicStates
     };
 
+    VkVertexInputAttributeDescription attributeDescriptions[2];
+    getVertexAttributeDescriptions(attributeDescriptions);
+    VkVertexInputBindingDescription bindingDescription = getVertexBindingDescription();
+
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
         .pNext = NULL,
         .flags = 0,
-        .vertexBindingDescriptionCount = 0,
-        .pVertexBindingDescriptions = NULL,
-        .vertexAttributeDescriptionCount = 0,
-        .pVertexAttributeDescriptions = NULL
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &bindingDescription,
+        .vertexAttributeDescriptionCount = 2,
+        .pVertexAttributeDescriptions = attributeDescriptions
     };
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
@@ -557,7 +575,9 @@ void createGraphicsPipeline(VkApp *pApp) {
         .depthBiasEnable = VK_FALSE,
         .depthBiasConstantFactor = 0.0f,
         .depthBiasClamp = 0.0f,
-        .depthBiasSlopeFactor = 0.0f
+        .depthBiasSlopeFactor = 0.0f,
+        .cullMode = VK_CULL_MODE_BACK_BIT,
+        .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE
     };
 
     VkPipelineMultisampleStateCreateInfo multisampling = {
@@ -601,8 +621,8 @@ void createGraphicsPipeline(VkApp *pApp) {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext = NULL,
         .flags = 0,
-        .setLayoutCount = 0,
-        .pSetLayouts = NULL,
+        .setLayoutCount = 1,
+        .pSetLayouts = &pApp->descriptorSetLayout,
         .pushConstantRangeCount = 0,
         .pPushConstantRanges = NULL
     };
@@ -750,7 +770,7 @@ void createCommandPool(VkApp *pApp) {
 }
 
 void createCommandBuffers(VkApp *pApp) {
-    pApp->commandBuffers = (VkCommandBuffer*)malloc(sizeof(VkCommandBuffer) * MAX_FRAMES_IN_FLIGHT);
+    // pApp->commandBuffers = (VkCommandBuffer*)malloc(sizeof(VkCommandBuffer) * MAX_FRAMES_IN_FLIGHT);
     VkCommandBufferAllocateInfo allocInfo = {
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .pNext = NULL,
@@ -812,7 +832,15 @@ void recordCommandBuffer(VkApp *pApp, VkCommandBuffer commandBuffer, uint32_t im
     };
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+    VkBuffer vertexBuffers[] = {pApp->vertexBuffer};
+    VkDeviceSize offsets[] = {0};
+
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    vkCmdBindIndexBuffer(commandBuffer, pApp->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pApp->pipelineLayout, 0, 1, &pApp->descriptorSets[pApp->currentFrame], 0, NULL);
+    vkCmdDrawIndexed(commandBuffer, modelIndexCount, 1, 0, 0, 0);
     vkCmdEndRenderPass(commandBuffer);
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
@@ -822,9 +850,9 @@ void recordCommandBuffer(VkApp *pApp, VkCommandBuffer commandBuffer, uint32_t im
 }
 
 void createSyncObjects(VkApp *pApp) {
-    pApp->imageAvailableSemaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
-    pApp->renderFinishedSemaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
-    pApp->inFlightFences = (VkFence*)malloc(sizeof(VkFence) * MAX_FRAMES_IN_FLIGHT);
+    // pApp->imageAvailableSemaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
+    // pApp->renderFinishedSemaphores = (VkSemaphore*)malloc(sizeof(VkSemaphore) * MAX_FRAMES_IN_FLIGHT);
+    // pApp->inFlightFences = (VkFence*)malloc(sizeof(VkFence) * MAX_FRAMES_IN_FLIGHT);
 
     VkSemaphoreCreateInfo semaphoreInfo = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
@@ -860,6 +888,9 @@ void cleanupSwapChain(VkApp *pApp) {
         vkDestroyFramebuffer(pApp->device, pApp->swapChainFramebuffers[i], NULL);
     }
     vkDestroySwapchainKHR(pApp->device, pApp->swapChain, NULL);
+    free(pApp->swapChainFramebuffers);
+    free(pApp->swapChainImages);
+    free(pApp->swapChainImageViews);
 }
 
 void recreateSwapChain(VkApp *pApp) {
@@ -885,6 +916,7 @@ void app_renderFrame(VkApp *pApp) {
         fprintf(stderr,"ERROR: failed to acquire swap chain image!");
         exit(1);
     }
+    updateUniformBuffer(pApp->currentFrame, pApp);
     // Only reset the fence if we are submitting work
     vkResetFences(pApp->device, 1, &pApp->inFlightFences[pApp->currentFrame]);
 
@@ -892,6 +924,7 @@ void app_renderFrame(VkApp *pApp) {
     vkResetCommandBuffer(pApp->commandBuffers[pApp->currentFrame], 0);
 
     recordCommandBuffer(pApp, pApp->commandBuffers[pApp->currentFrame], imageIndex);
+
 
     VkSemaphore waitSemaphores[] = {pApp->imageAvailableSemaphores[pApp->currentFrame]};
     VkSemaphore signalSemaphores[] = {pApp->renderFinishedSemaphores[pApp->currentFrame]};
@@ -931,3 +964,233 @@ void app_renderFrame(VkApp *pApp) {
     pApp->currentFrame = (pApp->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
+uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, VkPhysicalDevice physicalDevice) {
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+        if (typeFilter & (1 << i) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+            return i;
+        }
+    }
+    fprintf(stderr, "ERROR: failed to find suitable memory type!");
+    exit(1);
+}
+
+void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer *pBuffer, VkDeviceMemory *pBufferMemory, VkApp *pApp) {
+    VkBufferCreateInfo bufferInfo = {0};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = size;
+    bufferInfo.usage = usage;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    if (vkCreateBuffer(pApp->device, &bufferInfo, NULL, pBuffer) != VK_SUCCESS) {
+        fprintf(stderr, "ERROR: failed to create vertex buffer!");
+        exit(1);
+    }
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(pApp->device, *pBuffer, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo = {0};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties, pApp->physicalDevice);
+    
+    if (vkAllocateMemory(pApp->device, &allocInfo, NULL, pBufferMemory) != VK_SUCCESS) {
+        fprintf(stderr, "ERROR: failed to allocate vertex buffer memory!");
+        exit(1);
+    }
+    vkBindBufferMemory(pApp->device, *pBuffer, *pBufferMemory, 0);
+}
+
+void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size, VkApp *pApp) {
+    VkCommandBufferAllocateInfo allocInfo = {0};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = pApp->commandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(pApp->device, &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo = {0};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    VkBufferCopy copyRegion = {0};
+    copyRegion.srcOffset = 0;
+    copyRegion.dstOffset = 0;
+    copyRegion.size = size;
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+
+    vkEndCommandBuffer(commandBuffer);
+
+    VkSubmitInfo submitInfo = {0};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+
+    vkQueueSubmit(pApp->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(pApp->graphicsQueue);
+
+    vkFreeCommandBuffers(pApp->device, pApp->commandPool, 1, &commandBuffer);
+}
+
+
+void createVertexBuffer(VkApp *pApp) {
+    VkDeviceSize bufferSize = sizeof(Vertex) * modelVertexCount;
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory, pApp);
+
+    void* data;
+    vkMapMemory(pApp->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, modelVertices, (size_t)bufferSize);
+    vkUnmapMemory(pApp->device, stagingBufferMemory);
+
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &pApp->vertexBuffer, &pApp->vertexBufferMemory, pApp);
+
+    copyBuffer(stagingBuffer, pApp->vertexBuffer, bufferSize, pApp);
+
+    vkDestroyBuffer(pApp->device, stagingBuffer, NULL);
+    vkFreeMemory(pApp->device, stagingBufferMemory, NULL);
+
+}
+void createIndexBuffer(VkApp *pApp) {
+    VkDeviceSize bufferSize = sizeof(uint16_t) * modelIndexCount;
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory, pApp);
+
+    void* data;
+    vkMapMemory(pApp->device, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, modelIndices, (size_t)bufferSize);
+    vkUnmapMemory(pApp->device, stagingBufferMemory);
+
+    createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &pApp->indexBuffer, &pApp->indexBufferMemory, pApp);
+
+    copyBuffer(stagingBuffer, pApp->indexBuffer, bufferSize, pApp);
+
+    vkDestroyBuffer(pApp->device, stagingBuffer, NULL);
+    vkFreeMemory(pApp->device, stagingBufferMemory, NULL);
+
+}
+
+
+void createDescriptorSetLayout(VkApp *pApp) {
+    VkDescriptorSetLayoutBinding uboLayoutBinding = {0};
+    uboLayoutBinding.binding = 0;
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    uboLayoutBinding.pImmutableSamplers = NULL;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo = {0};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &uboLayoutBinding;
+
+    if (vkCreateDescriptorSetLayout(pApp->device, &layoutInfo, NULL, &pApp->descriptorSetLayout) != VK_SUCCESS) {
+        fprintf(stderr, "failed to create descriptor set layout!");
+        exit(1);
+    }
+}
+
+void updateUniformBuffer(uint32_t currentImage, VkApp *pApp) {
+    double time = (double)SDL_GetTicks() / 1000.0;
+
+    UniformBufferObject ubo;
+    glm_mat4_identity(ubo.model);
+    glm_rotate(ubo.model, time * glm_rad(90.0f), (vec3){0.0f, 0.0f, 1.0f});
+    
+    glm_mat4_identity(ubo.view);
+    glm_lookat((vec3){2.0f, 2.0f, 2.0f}, (vec3){0.0f, 0.0f, 0.0f}, (vec3){0.0f, 0.0f, 1.0f}, ubo.view);
+
+    glm_mat4_identity(ubo.proj);
+    glm_perspective(glm_rad(45.0f), pApp->swapChainExtent.width / (float)pApp->swapChainExtent.height, 0.1f, 10.0f, ubo.proj);
+
+    // Flip Y Axis because openGL is cring
+    ubo.proj[1][1] *= -1;
+    memcpy(pApp->uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+}
+
+void createUniformBuffers(VkApp *pApp) {
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+    // pApp->uniformBuffers = (VkBuffer*)malloc(sizeof(VkBuffer) * MAX_FRAMES_IN_FLIGHT);
+    // pApp->uniformBuffersMemory = (VkDeviceMemory*)malloc(sizeof(VkDeviceMemory) * MAX_FRAMES_IN_FLIGHT);
+    // pApp->uniformBuffersMapped = (void**)malloc(sizeof(void*) * MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &pApp->uniformBuffers[i], &pApp->uniformBuffersMemory[i], pApp);
+
+        vkMapMemory(pApp->device, pApp->uniformBuffersMemory[i], 0, bufferSize, 0, &pApp->uniformBuffersMapped[i]);
+    }
+}
+
+void destroyUniformBuffers(VkApp *pApp) {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroyBuffer(pApp->device, pApp->uniformBuffers[i], NULL);
+        vkFreeMemory(pApp->device, pApp->uniformBuffersMemory[i], NULL);
+    }
+    // free(pApp->uniformBuffers);
+    // free(pApp->uniformBuffersMemory);
+    // free(pApp->uniformBuffersMapped);
+}
+
+void createDescriptorPool(VkApp *pApp) {
+    VkDescriptorPoolSize poolSize = {0};
+    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSize.descriptorCount = MAX_FRAMES_IN_FLIGHT;
+
+    VkDescriptorPoolCreateInfo poolInfo = {0};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+    poolInfo.maxSets = MAX_FRAMES_IN_FLIGHT;
+
+    if (vkCreateDescriptorPool(pApp->device, &poolInfo, NULL, &pApp->descriptorPool) != VK_SUCCESS) {
+        fprintf(stderr, "ERROR: failed to create descriptor pool!");
+        exit(1);
+    }
+}
+
+void createDescriptorSets(VkApp *pApp) {
+    VkDescriptorSetLayout layouts[MAX_FRAMES_IN_FLIGHT];
+    // Initialize the array with the same descriptorSetLayout value
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        layouts[i] = pApp->descriptorSetLayout;
+    }
+    VkDescriptorSetAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = pApp->descriptorPool;
+    allocInfo.descriptorSetCount = MAX_FRAMES_IN_FLIGHT;
+    allocInfo.pSetLayouts = layouts;
+
+    if (vkAllocateDescriptorSets(pApp->device, &allocInfo, pApp->descriptorSets) != VK_SUCCESS) {
+        fprintf(stderr, "ERROR: failed to allocate descriptor sets!");
+        exit(1);
+    }
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo bufferInfo = {0};
+        bufferInfo.buffer = pApp->uniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+
+        VkWriteDescriptorSet descriptorWrite = {0};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = pApp->descriptorSets[i];
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+        descriptorWrite.pImageInfo = NULL;
+        descriptorWrite.pTexelBufferView = NULL;
+        
+        vkUpdateDescriptorSets(pApp->device, 1, &descriptorWrite, 0, NULL);
+    }
+}
