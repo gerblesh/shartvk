@@ -17,6 +17,7 @@ cc = meson.get_compiler('c')
 
 cglm_dep = dependency('cglm')
 sdl_dep = dependency('sdl2')
+sdl_image_dep = dependency('sdl2_image')
 vulkan_dep = dependency('vulkan')
 
 # Add the executable
@@ -24,7 +25,7 @@ executable_name = 'shartvk'
 executable = executable(
   executable_name,
   'src/main.c',
-  dependencies : [cglm_dep, sdl_dep, vulkan_dep],
+  dependencies : [cglm_dep, sdl_dep, sdl_image_dep, vulkan_dep],
   install : true
 )
 

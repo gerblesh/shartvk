@@ -38,6 +38,9 @@ void app_initVulkan(VkApp *pApp) {
     createGraphicsPipeline(pApp);
     createFramebuffers(pApp);
     createCommandPool(pApp);
+    createTextureImage(pApp);
+    createTextureImageView(pApp);
+    createTextureSampler(pApp);
     createVertexBuffer(pApp);
     createIndexBuffer(pApp);
     createUniformBuffers(pApp);
@@ -81,6 +84,11 @@ void app_cleanup(VkApp *pApp) {
     vkDestroyPipelineLayout(pApp->device, pApp->pipelineLayout, NULL);
     vkDestroyRenderPass(pApp->device, pApp->renderPass, NULL);
     cleanupSwapChain(pApp);
+        
+    vkDestroyImage(pApp->device, pApp->textureImage, NULL);
+    vkFreeMemory(pApp->device, pApp->textureImageMemory, NULL);
+    vkDestroyImageView(pApp->device, pApp->textureImageView, NULL);
+    vkDestroySampler(pApp->device, pApp->textureSampler, NULL);
     destroyUniformBuffers(pApp);
     vkDestroyDescriptorPool(pApp->device, pApp->descriptorPool, NULL);
     vkDestroyDescriptorSetLayout(pApp->device, pApp->descriptorSetLayout, NULL);

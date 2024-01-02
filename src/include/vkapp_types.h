@@ -38,6 +38,10 @@ typedef struct {
     VkSemaphore imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
     VkSemaphore renderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
     VkFence inFlightFences[MAX_FRAMES_IN_FLIGHT];
+    VkImage textureImage;
+    VkDeviceMemory textureImageMemory;
+    VkImageView textureImageView;
+    VkSampler textureSampler;
     uint32_t currentFrame;
 } VkApp;
 
@@ -138,6 +142,7 @@ void loadShaderFile(const char *filePath, ShaderFile *shaderFile) {
 typedef struct {
     vec2 pos;
     vec3 color;
+    vec2 texCoord;
 } Vertex;
 
 typedef struct {
@@ -165,4 +170,9 @@ void getVertexAttributeDescriptions(VkVertexInputAttributeDescription *attribute
     attributeDescriptions[1].location = 1;
     attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
     attributeDescriptions[1].offset = offsetof(Vertex, color);
+
+    attributeDescriptions[2].binding = 0;
+    attributeDescriptions[2].location = 2;
+    attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+    attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
 }
