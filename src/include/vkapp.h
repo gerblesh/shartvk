@@ -36,8 +36,9 @@ void app_initVulkan(VkApp *pApp) {
     createRenderPass(pApp);
     createDescriptorSetLayout(pApp);
     createGraphicsPipeline(pApp);
-    createFramebuffers(pApp);
     createCommandPool(pApp);
+    createDepthResources(pApp);
+    createFramebuffers(pApp);
     createTextureImage(pApp);
     createTextureImageView(pApp);
     createTextureSampler(pApp);

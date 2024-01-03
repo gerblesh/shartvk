@@ -43,6 +43,9 @@ typedef struct {
     VkImageView textureImageView;
     VkSampler textureSampler;
     uint32_t currentFrame;
+    VkImage depthImage;
+    VkDeviceMemory depthImageMemory;
+    VkImageView depthImageView;
 } VkApp;
 
 void populateVkApp(uint32_t width,uint32_t height, char *title, VkApp *pApp) {
@@ -140,7 +143,7 @@ void loadShaderFile(const char *filePath, ShaderFile *shaderFile) {
 }
 
 typedef struct {
-    vec2 pos;
+    vec3 pos;
     vec3 color;
     vec2 texCoord;
 } Vertex;
@@ -163,7 +166,7 @@ void getVertexAttributeDescriptions(VkVertexInputAttributeDescription *attribute
     // setting attribute description for vertex position
     attributeDescriptions[0].binding = 0;
     attributeDescriptions[0].location = 0;
-    attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
     attributeDescriptions[0].offset = offsetof(Vertex, pos);
     // setting attribute description for vertex color
     attributeDescriptions[1].binding = 0;
