@@ -87,4 +87,3 @@ bool checkValidationLayerSupport() {
     return true;
 #endif
 }
-

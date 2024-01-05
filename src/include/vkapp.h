@@ -26,6 +26,7 @@ void app_initSDLWindow(VkApp *pApp) {
 }
 
 void app_initVulkan(VkApp *pApp) {
+    loadModel();
     app_createVulkanInstance(pApp);
     setupDebugMessenger(pApp);
     createSurface(pApp);

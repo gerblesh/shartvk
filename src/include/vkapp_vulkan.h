@@ -1,7 +1,13 @@
+#include <stdint.h>
 #include <vulkan/vulkan.h>
+
+#define TINYOBJ_LOADER_C_IMPLEMENTATION
+#include "tinyobj_loader_c.h"
+
 #include "SDL.h"
 #include "SDL_image.h"
 #include "SDL_vulkan.h"
+
 
 #define DEVICE_EXTENSION_COUNT 1
 
@@ -9,25 +15,14 @@ const char *deviceExtensions[] = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
-uint32_t modelVertexCount = 8;
-Vertex modelVertices[] = {
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+const char *modelPath = "data/viking_room.obj";
+const char *texturePath = "data/texture.png";
 
-    {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
-};
+uint32_t modelVertexCount = 0;
+Vertex *modelVertices;
 
-uint32_t modelIndexCount = 12;
-uint16_t modelIndices[] = {
-    0, 1, 2, 2, 3, 0,
-    4, 5, 6, 6, 7, 4
-};
-
+uint32_t modelIndexCount = 0;
+uint32_t *modelIndices;
 
 QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
 void updateUniformBuffer(uint32_t currentImage, VkApp *pApp);
@@ -246,6 +241,7 @@ void app_createVulkanInstance(VkApp *pApp) {
         exit(1);
     }
 
+    printf("Hi from fucknuts!\n");
     VkApplicationInfo appInfo = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pNext = NULL,
@@ -869,7 +865,7 @@ void recordCommandBuffer(VkApp *pApp, VkCommandBuffer commandBuffer, uint32_t im
     VkDeviceSize offsets[] = {0};
 
     vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-    vkCmdBindIndexBuffer(commandBuffer, pApp->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindIndexBuffer(commandBuffer, pApp->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pApp->pipelineLayout, 0, 1, &pApp->descriptorSets[pApp->currentFrame], 0, NULL);
     vkCmdDrawIndexed(commandBuffer, modelIndexCount, 1, 0, 0, 0);
@@ -1099,7 +1095,7 @@ void createVertexBuffer(VkApp *pApp) {
 
 }
 void createIndexBuffer(VkApp *pApp) {
-    VkDeviceSize bufferSize = sizeof(uint16_t) * modelIndexCount;
+    VkDeviceSize bufferSize = sizeof(uint32_t) * modelIndexCount;
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMemory;
@@ -1401,7 +1397,6 @@ void createTextureSampler(VkApp *pApp) {
 }
 
 void createTextureImage(VkApp *pApp) {
-    const char *texturePath = "textures/texture.png";
     // Load image with SDL_image
     SDL_Surface *originalSurface = IMG_Load(texturePath);
 
@@ -1538,5 +1533,73 @@ void createDepthResources(VkApp *pApp) {
     createImage(pApp->swapChainExtent.width, pApp->swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &pApp->depthImage, &pApp->depthImageMemory, pApp);
     pApp->depthImageView = createImageView(pApp->depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, pApp);
     transitionImageLayout(pApp->depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, pApp);
+}
 
+
+void loadFile(void *ctx, const char * filename, const int is_mtl, const char *obj_filename, char ** buffer, size_t * len)
+{
+    long string_size = 0, read_size = 0;
+    FILE * handler = fopen(filename, "r");
+
+    if (handler) {
+        fseek(handler, 0, SEEK_END);
+        string_size = ftell(handler);
+        rewind(handler);
+        *buffer = (char *) malloc(sizeof(char) * (string_size + 1));
+        read_size = fread(*buffer, sizeof(char), (size_t) string_size, handler);
+        (*buffer)[string_size] = '\0';
+        if (string_size != read_size) {
+            free(buffer);
+            buffer = NULL;
+        }
+        fclose(handler);
+    }
+
+    *len = read_size;
+}
+
+
+void loadModel() {
+    printf("INFO: Loading model: %s!\n", modelPath);
+    unsigned int flags = TINYOBJ_FLAG_TRIANGULATE;
+    tinyobj_attrib_t attrib;
+    tinyobj_shape_t *shapes;
+    tinyobj_material_t *materials;
+    
+    size_t num_shapes = 0;
+    size_t num_materials = 0;
+
+    int ret =
+        tinyobj_parse_obj(&attrib, &shapes, &num_shapes, &materials,
+                          &num_materials, modelPath, loadFile, NULL, flags);
+    if (ret != TINYOBJ_SUCCESS) {
+        fprintf(stderr, "ERROR: failed to load obj file!");
+        exit(1);
+    }
+    modelVertices = (Vertex*)malloc((size_t)attrib.num_vertices * sizeof(Vertex));
+    modelIndices = (uint32_t*)malloc((size_t)attrib.num_faces * sizeof(uint32_t));
+
+    modelIndexCount = attrib.num_faces;
+    modelVertexCount = attrib.num_vertices;
+    printf("Num Faces: %u, Num Verts: %u\n", attrib.num_faces, attrib.num_vertices);
+    for (uint32_t i; i < attrib.num_faces; i++) {
+        Vertex vertex = {};
+        vertex.pos[0] = attrib.vertices[3 * attrib.faces[i].v_idx + 0];
+        vertex.pos[1] = attrib.vertices[3 *attrib.faces[i].v_idx + 1];
+        vertex.pos[2] = attrib.vertices[3 *attrib.faces[i].v_idx + 2];
+        
+        
+        vertex.texCoord[0] = attrib.texcoords[2 * attrib.faces[i].vt_idx + 0];
+        vertex.texCoord[1] = 1.0f - attrib.texcoords[2 * attrib.faces[i].vt_idx + 1];
+        
+        vertex.color[0] = 1.0f;
+        vertex.color[1] = 1.0f;
+        vertex.color[2] = 1.0f;
+
+        modelIndices[i] = attrib.faces[i].v_idx;
+        modelVertices[attrib.faces[i].v_idx] = vertex;
+    }
+    tinyobj_attrib_free(&attrib);
+    tinyobj_shapes_free(shapes, num_shapes);
+    tinyobj_materials_free(materials, num_materials);
 }
